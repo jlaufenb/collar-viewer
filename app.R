@@ -33,7 +33,7 @@ library(magrittr)
 library(highcharter)
 
 # Load the data (locally)
-dat <- read.csv("CollarData.csv")
+dat <- read.csv("CollarData_example.csv")
 
 # Format the data:
 dat$fixtime <- as.POSIXct(strptime(dat$fixtime, format = "%Y-%m-%d %H:%M"))
