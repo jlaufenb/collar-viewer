@@ -5,16 +5,16 @@
 # plots movement statistics.                                                   #
 #                                                                              #
 # Author: McCrea Cobb <mccrea_cobb@fws.gov>                                    #
-# Date last edited: 7/18/2018                                                  #
+# Date last edited: 3/1/2019                                                   #
 ################################################################################
 
 # Clear global env. and free up memory:
-# rm(list=ls()) ; 
+rm(list=ls())
 
+# Source required scripts:
+source("code/global.R")
 
 # Install required packages:
-source("Scripts/global.R")
-# source("requiredPackages.R")
 library(shiny)
 library(dplyr)
 library(readr)
@@ -32,29 +32,11 @@ library(shinyjs)
 library(magrittr)
 library(highcharter)
 
-# Load the data (locally)
-dat <- read.csv("CollarData_example.csv")
-
-# Format the data:
-dat$fixtime <- as.POSIXct(strptime(dat$fixtime, format = "%Y-%m-%d %H:%M"))
-dat$date <- as.Date(dat$fixtime)
-dat$month <- as.numeric(format(dat$date, "%m"))
-dat$lon <- as.numeric(dat$lon)
-dat$lat <- as.numeric(dat$lat)
-dat$CTN <- dat$id
-dat <- dat[complete.cases(dat$lat), ]   # Remove NA rows from lat/lon
-i <- sapply(dat, is.factor)
-dat[i] <- lapply(dat[i], as.character)
-
-# dat.collar <- read.csv("./Data/GPS/Telonics/CaptureData.csv")
-# dat.collar$DateCapture <- as.POSIXct(strptime(as.character(dat.collar$DateCapture), format = "%m/%d/%Y"))
-# 
-# dat <- merge(dat, dat.collar, by = "CTN")
-
-site <- dat %>% extract2("Site") %>% unique()
+# Load GPS collar data:
+load("data/collar_data.RData")
 
 #-------------------------------------------------------------------------------
-## User interface
+##----User interface
 
 ui <- navbarPage(title = "Boreal Lynx Project Collar Viewer",
                  id = "nav",
@@ -64,7 +46,7 @@ ui <- navbarPage(title = "Boreal Lynx Project Collar Viewer",
                                                 column(width=3,
                                                        htmlOutput("dataInfo"),
                                                        hr(),
-                                                       h4("Step 1. Make your selections:"),
+                                                       h4("STEP 1. Make your selections:"),
                                                        selectInput(inputId = "si.site",
                                                                    label = "Study site:",
                                                                    choices = c("Tetlin" = "TET",
@@ -72,6 +54,11 @@ ui <- navbarPage(title = "Boreal Lynx Project Collar Viewer",
                                                                                "Yukon Flats" = "YKF",
                                                                                "Kanuti" = "KAN",
                                                                                "Wiseman" = "WIS"),
+                                                                   multiple = TRUE,
+                                                                   selectize = TRUE),
+                                                       selectInput(inputId = 'si.id', 
+                                                                   label = 'CTN:', 
+                                                                   choices = unique(dat$id), 
                                                                    multiple = TRUE,
                                                                    selectize = TRUE),
                                                        selectInput(inputId = "si.sex",
@@ -86,25 +73,15 @@ ui <- navbarPage(title = "Boreal Lynx Project Collar Viewer",
                                                                                "Kitten" = "K"),
                                                                    multiple = TRUE,
                                                                    selectize = TRUE),
-                                                       selectInput(inputId = 'si.ctn', 
-                                                                   label = 'CTN:', 
-                                                                   choices = unique(dat$CTN), 
-                                                                   multiple = TRUE,
-                                                                   selectize = TRUE),
                                                        dateRangeInput(inputId = "dr.dates",
                                                                       label = "Date Range:",
                                                                       start = "2018-01-01",
                                                                       format = "mm/dd/yyyy",
                                                                       sep = "/"),
-                                                       sliderInput(inputId = "si.month",
-                                                                   label = "Select a month:",
-                                                                   min = 1,
-                                                                   max = 12,
-                                                                   value = c(1, 12)),
                                                        hr(),
-                                                       h4("Step 2. View HRs and movements:"),
+                                                       h4("STEP 2. View home ranges and movements:"),
                                                        actionButton("ac_UseData", 
-                                                                    label = "Make HR",class = "btn-success fltr-btn")
+                                                                    label = "Go",class = "btn-success fltr-btn")
                                                        # downloadButton(outputId = "downloadData", 
                                                        #                label = "Download")
                                                 ),
@@ -133,8 +110,8 @@ ui <- navbarPage(title = "Boreal Lynx Project Collar Viewer",
                                                            choices = c('Display Points', "Minimum Convex Polygon", "Kernel Density", "Brownian Bridge"),
                                                            selected = 'Display Points'),
                                             textInput('tx_Contour', 'Contour Percentages', placeholder = '95', value = '95'),
-                                            actionButton("ac_UpdateMap", "Update Map"),
-                                            downloadButton('dl_Shape', 'Download Polygon')
+                                            actionButton("ac_UpdateMap", "Update Map")
+                                            #downloadButton('dl_Shape', 'Download Polygon')
                               )
                           )
                  ),
@@ -159,7 +136,7 @@ ui <- navbarPage(title = "Boreal Lynx Project Collar Viewer",
                           hr(),
                           fluidRow(
                             column(3,
-                                   selectizeInput('slz_nsdID', 'Select ID', choices = dat$CTN, multiple = TRUE)),
+                                   selectizeInput('slz_nsdID', 'Select CTN', choices = dat$id, multiple = TRUE)),
                             column(4,
                                    p('Choose animals to display in the figure below. Multiple selections are supported.
                                      Net Squared Displacement is a metric used to classify movement strategies. The
@@ -213,36 +190,35 @@ ui <- navbarPage(title = "Boreal Lynx Project Collar Viewer",
 
 
 #-------------------------------------------------------------------------------
-## Server
+##----Server
 
 server <- function(input, output, session) {
   
   #-----------------------------------------------------------------------------
   ## PAGE 1 - MAP
   
-  # Update selectize input for si_ctn
-  ctnList <- reactive({
+  # Update selectize input for si_id
+  idList <- reactive({
     l <- dat %>% filter(Site == input$si_site) %>%
-      dplyr::select(CTN) %>% extract2(1) %>% unique() %>% sort()
+      dplyr::select(id) %>% extract2(1) %>% unique() %>% sort()
     return(l)
   })
   siteList <- reactive({
-    l <- dat %>% filter(CTN == input$CTN) %>%
+    l <- dat %>% filter(id == input$id) %>%
       dplyr::select(Site) %>% extract2(1) %>% unique() %>% sort()
     return(l)
   })
   observeEvent(input$si_site, {
-    updateSelectInput('si_ctn', choices = c('', ctnList()), selected = '')
+    updateSelectInput('si_id', choices = c('', idList()), selected = '')
   })
-  observeEvent(input$si_ctn, {
-    updateSelectInput('si_ctn', choices = c('', siteList()), selected = '')
+  observeEvent(input$si_id, {
+    updateSelectInput('si_id', choices = c('', siteList()), selected = '')
   })
   
   # Subset by site, CTN, date and month:
   dat.sub <- reactive({          # Subsets the data based on user inputs
     
-    df <- dat %>% filter(date > input$dr.dates[1] & date < input$dr.dates[2] & 
-                           month >= input$si.month[1] & month <= input$si.month[2])
+    df <- dat %>% filter(date > input$dr.dates[1] & date < input$dr.dates[2])
     
     if (!(is.null(input$si.site) | '' %in% input$si_site)) {  # By site
       df <- dat %>% filter(Site == input$si.site)
@@ -253,8 +229,8 @@ server <- function(input, output, session) {
     if (!(is.null(input$si.age) | '' %in% input$si.age)) {  # By age
       df <- dat %>% filter(AgeClass == input$si.age)
     }
-    if (!(is.null(input$si.ctn) | '' %in% input$si.ctn)) {  # By CTN
-      df <- dat %>% filter(CTN == input$si.ctn)
+    if (!(is.null(input$si.id) | '' %in% input$si.id)) {  # By CTN
+      df <- dat %>% filter(id == input$si.id)
     }
     
     return(df)
@@ -264,11 +240,11 @@ server <- function(input, output, session) {
   dat.sub.tbl <- reactive({
     dat.sub() %>% 
       group_by("Study site" = Site,
-               "CollarID" = CTN, 
+               "CTN" = id, 
                "AgeClass" = AgeClass,
                "Sex" = Sex) %>%  # Creates a summary table of the data
       summarise(
-        "Capture date" = as.Date(first(DateCapture)),
+        "Capture date" = as.Date(first(datecapture)),
         "Fix schedule" = last(fixsched),
         "Current fix rate" = last(fixrate),
         "First fix" = min(date),
@@ -307,10 +283,10 @@ server <- function(input, output, session) {
   output$dataInfo <- renderUI({
     HTML(
       paste(sep = "<br/>",
-            paste("<b>Total Animals:</b> ", length(unique(dat.sub()$CTN))),
-            paste("<b>Total Points:</b> ", nrow(dat.sub())),
-            paste("<b>Error Rate:</b> ",
-                  round(100 * (dat.na() / nrow(dat.sub())), 4), '%'),
+            paste("<b>Total Animals:</b> ", length(unique(dat.sub()$id))),
+            paste("<b>Total Fixes:</b> ", nrow(dat.sub())),
+            # paste("<b>Error Rate:</b> ",
+            #       round(100 * (dat.na() / nrow(dat.sub())), 4), '%'),
             paste("<b>Min. Date:</b> ", date(min(dat.sub()$date))),
             paste("<b>Max. Date:</b> ", date(max(dat.sub()$date)))
       ))
@@ -329,7 +305,7 @@ server <- function(input, output, session) {
   dat.move <- eventReactive(input$ac_UpdateMap, {
     df <- xyConv(dat.sub())
     move <- df %>%
-      group_by(CTN) %>%
+      group_by(id) %>%
       mutate(Distance = moveDist(x, y),
              sigDist = cumsum(Distance),
              NSD = moveNSD(x, y),
@@ -354,7 +330,7 @@ server <- function(input, output, session) {
     if (input$sl_HomeRange == 'Minimum Convex Polygon') {
       spdf <- SpatialPointsDataFrame(coordinates(cbind(df$x, df$y)),
                                      data = df, proj4string = CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"))
-      cp <- mcp(spdf[,"CTN"], percent = 99)
+      cp <- mcp(spdf[,"id"], percent = 99)
       cp <- spTransform(cp, CRS('+proj=longlat'))
       ids <- cp$id
       hr <- vector("list", length(cp$id))
@@ -367,11 +343,8 @@ server <- function(input, output, session) {
     } else if (input$sl_HomeRange == 'Kernel Density') {
       kd <- SpatialPointsDataFrame(coordinates(cbind(df$lon, df$lat)), data = df,
                                    proj4string = CRS('+proj=longlat'))
-      kd <- kernelUD(kd[, "CTN"])
+      kd <- kernelUD(kd[, "id"])
       hr <- lapply(kd, function(x) getContours(x, pct_contour()))
-      
-      ## spdf to geojson, wrapping this in an event reactive
-      #hr <- lapply(hr, function(x) geojson_json(x))
     } else if (input$sl_HomeRange == 'Brownian Bridge') {
       bb <- to_ltraj(df)
       bb <- estimate_bbmm(bb)
@@ -397,7 +370,8 @@ server <- function(input, output, session) {
     }
     
     lflt <- leaflet() %>% addProviderTiles('Esri.WorldTopoMap',
-                                           options = providerTileOptions(attribution = NA))
+                                           options = providerTileOptions(attribution = NA)) %>%
+      addMeasure(primaryLengthUnit="kilometers", secondaryLengthUnit="kilometers")
     
     if (input$sl_HomeRange == 'Display Points') {
       lflt <- lflt %>% mapPoints(dat.move())
@@ -460,23 +434,23 @@ server <- function(input, output, session) {
     move_plots()
   })
   
-  observeEvent(input$slz_ctn, {
-    ids <- input$slz_ctn
+  observeEvent(input$slz_id, {
+    ids <- input$slz_id
     updateSelectizeInput(session, 'slz_nsdID', choices = sort(ids), selected = ids[1])
   })
   
   output$nsdTimeSeries <- highcharter::renderHighchart({
     df <- dat.move() %>%
       mutate(ts = as_date(fixtime)) %>%
-      arrange(CTN, ts) %>%
-      group_by(CTN, ts) %>%
+      arrange(id, ts) %>%
+      group_by(id, ts) %>%
       slice(1) %>%
       ungroup()
     
     ids <- input$slz_nsdID
     hc <- highchart()
     for(i in seq_along(ids)) {
-      d <- df %>% filter(CTN == ids[i])
+      d <- df %>% filter(id == ids[i])
       hc <- hc_add_series_times_values(hc, dates = d$ts, values = d$NSD,
                                        color = color_pal[i], name = ids[i]) %>%
         hc_yAxis(max = 1)

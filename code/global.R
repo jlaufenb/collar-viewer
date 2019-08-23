@@ -18,19 +18,23 @@ color_pal <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
 #-------------------------------------------------------------------------------
 ## MAPPING FUNCTIONS
 
-# Map collar data on page one. One point per day for lines, First, and Last point
+# Map collar data (Input Data tab). One point per day for lines. First and Last points.
 CollarMap <- function(dataframe) {
   df <- dataframe %>%
     filter(!(is.na(lon) | is.na(lat))) %>%
     arrange(id, fixtime) %>%
-    group_by(id, as_date(fixtime)) %>%
-    slice(1) %>%
+    group_by(id, lubridate::as_date(fixtime)) %>%
+    slice(1) %>%  # takes the first fix of the day for each collar
     ungroup()
+  
   ids <- unique(df$id)
   pal <- rep_len(color_pal, length(ids))
 
   map <- leaflet() %>%
-    addProviderTiles("Esri.WorldTopoMap", options = providerTileOptions(attribution = NA))
+    addProviderTiles("Esri.WorldTopoMap", options = providerTileOptions(attribution = NA)) %>%
+    addMeasure(primaryLengthUnit="kilometers", secondaryLengthUnit="kilometers") %>%
+    addScaleBar(position="bottomleft")
+  
   for (i in seq_along(ids)) {
     d <- df %>% filter(id == ids[i])
     dp <- d[c(1, nrow(d)), ]
@@ -45,27 +49,28 @@ CollarMap <- function(dataframe) {
                             fillOpacity = 1,
                             popup = paste(sep = "<br>",
                                           paste("<b>Collar ID:<b>", ids[i]),
-                                          paste("<b>Date:<b> ", d$fixtime)))
+                                          paste("<b>Study site:<b>", d$Site),
+                                          paste("<b>Last fix:<b> ", d$fixtime)))
   }
   return(map)
 }
 
 # Map points and lines on leaflet map (Spatial Tab)
 mapPoints <- function(map, df) {
-  ids <- unique(df$CTN)
+  ids <- unique(df$id)
   pal <- rep_len(color_pal, length(ids))
   layers <- list()
 
   for(i in seq_along(ids)) {
-    dat <- df %>% filter(CTN == ids[i])
+    dat <- df %>% filter(id == ids[i])
     map <- addPolylines(map, lng = dat$lon, lat = dat$lat,
                         group = as.character(ids[i]),
                         color = pal[i], weight = 1)
     map <- addCircleMarkers(map, lng = dat$lon, lat = dat$lat,
                             group = as.character(ids[i]), color = pal[i],
-                            radius = 3, stroke = FALSE,fillOpacity = .3,
+                            radius = 3, stroke = FALSE, fillOpacity = .3,
                             popup = paste(sep = "<br>",
-                                          paste("<b>CTN:</b> ", ids[i]),
+                                          paste("<b>Collar ID:</b> ", ids[i]),
                                           paste("<b>Date:</b> ", dat$fixtime)))
     layers <- c(layers, as.character(ids[i]))
   }
@@ -96,10 +101,10 @@ Calculate_NSD <- function(dat) {
   utmcoord <- as.data.frame(sp::spTransform(geocoord, sp::CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")))
   colnames(utmcoord) <- c("Easting", "Northing")
   dat <- cbind(dat, utmcoord)
-  unq_id <- unique(dat$CTN)
+  unq_id <- unique(dat$id)
   df <- data.frame()
   for (i in unq_id) {
-    x <- dat[dat$CTN == i, ]
+    x <- dat[dat$id == i, ]
     x$NSD <- (x$Easting - x$Easting[1])**2 + (x$Northing - x$Northing[1])**2
     df <- rbind(df, x)
   }
@@ -108,9 +113,9 @@ Calculate_NSD <- function(dat) {
 
 # Plots net squared displacement:
 Plot_NSD <- function(dataframe) {
-  p <- ggplot(dataframe, aes(x = date, y = NSD, group = CTN)) +
+  p <- ggplot(dataframe, aes(x = date, y = NSD, group = id)) +
     geom_line(color = 'firebrick4', size = .75) +
-    facet_wrap(~CTN) +
+    facet_wrap(~id) +
     labs(y = 'Net Squared Displacement') +
     theme(panel.background = element_rect(fill = 'white'),
           plot.background = element_rect(fill = 'white'),
@@ -131,7 +136,7 @@ Plot_NSD <- function(dataframe) {
 DeviceMapping <- function(dataframe, basemap = "Esri.WorldTopoMap") {
   dat <- as.data.table(dataframe)
   dat <- dat[complete.cases(dat[, .(lon, lat)])]
-  unq_id <- unique(dat$CTN)
+  unq_id <- unique(dat$id)
   pal <- rep_len(color_pal, length(unq_id))
 
   device.map <- leaflet() %>%
@@ -139,7 +144,7 @@ DeviceMapping <- function(dataframe, basemap = "Esri.WorldTopoMap") {
   layer.group <- list()
 
   for(i in 1:length(unq_id)) {
-    df <- dat[CTN == unq_id[i]]
+    df <- dat[id == unq_id[i]]
     device.map <- addPolylines(device.map,
                                lng = df$lon, lat = df$lat,
                                group = as.character(unq_id[i]),
@@ -184,7 +189,7 @@ to_ltraj <- function(dat) {
    # colnames(coord_conv) <- c("Easting", "Northing")
    # dat <- cbind(dat, coord_conv)
 
-  traj <- as.ltraj(dat[, c("x", "y")], date = dat$fixtime, id = dat$CTN)
+  traj <- as.ltraj(dat[, c("x", "y")], date = dat$fixtime, id = dat$id)
   return(traj)
 }
 
@@ -298,9 +303,9 @@ moveSpeed <- function(dist, time) {
 
 # Create plots of movement statistics
 movement_eda <- function(dat, plot_var, type = 'line') {
-  pal <- rep_len(color_pal, length(unique(dat$CTN)))
+  pal <- rep_len(color_pal, length(unique(dat$id)))
 
-  p <- ggplot(dat, aes(group = CTN, color = factor(CTN), fill = factor(CTN)))
+  p <- ggplot(dat, aes(group = id, color = factor(id), fill = factor(id)))
   if(type == 'histogram'){
     p <- p + geom_histogram(aes_string(x = plot_var))
   } else if (type == 'line'){
@@ -308,7 +313,7 @@ movement_eda <- function(dat, plot_var, type = 'line') {
   } else if (type == 'point'){
     p <- p + geom_point(aes_string(x = 'fixtime', y = plot_var), size = 1.5)
   }
-  p <- p + facet_wrap(~CTN, scales = 'free') +
+  p <- p + facet_wrap(~id, scales = 'free') +
     scale_color_manual(values = pal) +
     scale_fill_manual(values = pal) +
     theme(panel.background = element_rect(fill = 'white'),
