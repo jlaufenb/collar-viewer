@@ -5,7 +5,7 @@
 # Tried to add a panel to upload a RData file of collar data and display 
 # these data in the second panel as a leaflet map.
 
-packages <- c("shiny", "tidyverse", "leaflet", "shinyWidgets")
+packages <- c("shiny", "tidyverse", "leaflet", "shinyWidgets", "DT")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
@@ -14,6 +14,7 @@ library(shiny)
 library(tidyverse)
 library(leaflet)
 library(shinyWidgets)
+library(DT)
 
 # Script the global file:
 source("code/global.R")
