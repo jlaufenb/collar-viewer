@@ -1,4 +1,4 @@
-# collar-viewer
+
 
 The United States Fish and Wildlife Service (FWS) GitHub project code is provided on 
 an "as is" basis and the user assumes responsibility for its use. FWS has relinquished 
@@ -11,8 +11,12 @@ endorsement of any commercial product or activity by FWS or the United States
 Government.
 _____________________________
 
+# collar-viewer
+
+## Use
 To launch the shiny app, install the `shiny` package and then run `shiny::runGitHub( "collar-viewer", "USFWS")`.
 
+## Description
 A shiny app for visualizing and summarizing GPS collar data from lynx in Alaska. 
 Currently, users upload a RData file that contains a dataframe named "dat". This dataframe at a minimum contains unprojected GPS fixes 
 (lat/long), collarIDs and dates. These data are imported and mapped using leaflet.
