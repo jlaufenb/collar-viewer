@@ -14,8 +14,8 @@ _____________________________
 # GPS Collar Viewer
 
 ## Use
-`if (!require("shiny")) install.packages("shiny")`  
-`shiny::runGitHub( "collar-viewer", "USFWS", launch.browser=T)`
+`if (!require("shiny")) install.packages("shiny")  
+shiny::runGitHub( "collar-viewer", "USFWS", launch.browser=T)`
 
 ## Description
 An R shiny app for visualizing and summarizing GPS collar data from lynx in Alaska. 
