@@ -11,7 +11,7 @@ endorsement of any commercial product or activity by FWS or the United States
 Government.
 _____________________________
 
-# collar-viewer
+# GPS Collar Viewer
 
 ## Use
 To launch the shiny app, install the `shiny` package and then run `shiny::runGitHub( "collar-viewer", "USFWS")`.
