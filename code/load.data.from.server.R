@@ -14,22 +14,19 @@
 ## Update the flat.file on the server
 ##    Make sure that the server drive is mapped first! (->FWS Tools to Go->Map Drives)
 
+setwd("s:/InvMon/Biometrics/_Projects/Refuge/_RegionalProjects/Lynx/Scripts")
 ## Process all QFP location data
-
-setwd("s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/code")
-
-source("./functions/batch.flat.gps.R")
-
-batch.flat.gps(iridium_csv.dir="s:/im_archive/boreal_lynx/products/iridium_csv",
+source("./Functions/batch.flat.gps.R")
+batch.flat.gps(iridium_csv.dir="../Data/RawData/GPSCollar/telonics/iridium_csv",
                save.file=TRUE,
-               save.dir="f:/active_projects/shiny/lynx/data",
+               save.dir="../Data/DerivedData/GPSCollar/telonics",
                returnx=FALSE,
                pattern="Complete")
 ## Process all mortality notification data
-source("s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/functions/batch.flat.mort.R")
-batch.flat.mort(iridium_csv.dir="s:/im_archive/boreal_lynx/products/iridium_csv",
+source("./Functions/batch.flat.mort.R")
+batch.flat.mort(iridium_csv.dir="../Data/RawData/GPSCollar/telonics/iridium_csv",
                 save.file=TRUE,
-                save.dir="s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/data/derived_data/gps_collar/telonics",
+                save.dir="../Data/DerivedData/GPSCollar/telonics",
                 returnx=FALSE,
                 pattern="Complete")
 
@@ -47,15 +44,15 @@ GetServerData <- function(){
   # Loads the updated flat.file from the I&M server and saves it locally:
   
   # Set working directory:
-  setwd("f:/active_projects/Shiny/lynx")
+  setwd("f:/ActiveProjects/Shiny/Lynx")
   
 
-  message("Importing collar data from the server...")
+  message("Loading collar data from the server...")
   
   # Load the data:
-  dat <- "s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/data/derived_data/gps_collar/telonics/flat.gps.gzip"
+  dat <- "s:/InvMon/Biometrics/_Projects/Refuge/_RegionalProjects/Lynx/Data/DerivedData/GPSCollar/telonics/flat.gps.gzip"
   dat <- get(load(dat))
-  dat.collar <- read.csv("s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/data/raw_data/capture/capture_data.csv")
+  dat.collar <- read.csv("s:/InvMon/Biometrics/_Projects/Refuge/_RegionalProjects/Lynx/Data/RawData/Capture/CaptureData.csv")
   dat.collar$id <- dat.collar$CTN
   
   message("Formatting data...")
@@ -90,7 +87,7 @@ GetServerData <- function(){
   dat <- dat %>% filter(!(id == "700534A" & date > as.Date("2018-05-04")))
   
   # Save it:
-  save(dat, file="./data/collar_data.RData")
+  save(dat, file="./data/collardata.RData")
   
   message("Done!")
   

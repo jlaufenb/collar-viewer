@@ -33,7 +33,9 @@ CollarMap <- function(dataframe) {
   map <- leaflet() %>%
     addProviderTiles("Esri.WorldTopoMap", options = providerTileOptions(attribution = NA)) %>%
     addMeasure(primaryLengthUnit="kilometers", secondaryLengthUnit="kilometers") %>%
-    addScaleBar(position="bottomleft")
+    addScaleBar(position="bottomleft") %>%
+    setView(lng = -150, lat = 65, zoom = 4)
+    
   
   for (i in seq_along(ids)) {
     d <- df %>% filter(id == ids[i])
@@ -49,7 +51,7 @@ CollarMap <- function(dataframe) {
                             fillOpacity = 1,
                             popup = paste(sep = "<br>",
                                           paste("<b>Collar ID:<b>", ids[i]),
-                                          paste("<b>Study site:<b>", d$Site),
+                                          paste("<b>Study site:<b>", d$site),
                                           paste("<b>Last fix:<b> ", d$fixtime)))
   }
   return(map)
