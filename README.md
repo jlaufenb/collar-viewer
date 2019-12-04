@@ -15,4 +15,4 @@ This is a shiny app for visualizing and summarizing GPS collar data from lynx in
 Currently, users upload a RData file that contains a dataframe named "dat". This dataframe at a minimum contains unprojected GPS fixes 
 (lat/long), collarIDs and dates. These data are imported and mapped using leaflet.
 A summary table is produced that includes includes refuges and fist and last fix
-dates, by collarID. Users can subset the data by date range, collarID, and Refuge.
+dates, by collarID. Users can subset the data by study site, id, and sex.
