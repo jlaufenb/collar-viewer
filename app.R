@@ -1,4 +1,5 @@
-#
+#library(DT)
+
 # A work in progress updating the shiny app
 #
 # Tried to add a panel to upload a RData file of collar data and display 
@@ -20,17 +21,14 @@ ui <- navbarPage("Lynx Collar Viewer", id="nav",
                  
                  tabPanel("Load data",
                           # Sidebar layout
-                          sidebarLayout(
-                            sidebarPanel(
+                          fluidPage(
                               fileInput(inputId="file", 
                                         label="Select collar data",
                                         multiple = FALSE,
-                                        accept = ".RData"), # used to get the file upload control option
-                              helpText("Max file size is 32 MB")),
-                            mainPanel(
-                              uiOutput("validate")
-                            )
-                          )),
+                                        accept = ".RData")), # used to get the file upload control option
+
+                              DT::DTOutput("sum.tbl")
+                          ),
                  
                  
                  tabPanel("Interactive map",
@@ -39,7 +37,7 @@ ui <- navbarPage("Lynx Collar Viewer", id="nav",
                               
                               tags$head(
                                 # Include our custom CSS
-                                includeCSS("styles.css"),
+                                includeCSS("style.css"),
                                 includeScript("gomap.js")
                               ),
                               
@@ -50,15 +48,14 @@ ui <- navbarPage("Lynx Collar Viewer", id="nav",
                                             draggable = TRUE, top = 60, left = 20, right = "auto", bottom = "auto",
                                             width = 300, height = "auto",
                                             
-                                            h3("Collar explorer"),
-                                            
                                             selectizeGroupUI(
                                               id = "my-filters",
                                               inline = FALSE,
                                               params = list(
-                                                site = list(inputId = "site", label = "Select site", placeholder = 'select'),
-                                                sex = list(inputId = "sex", label = "Select sex", placeholder = 'select'),
-                                                id = list(inputId = "id", label = "Select id", placeholder = 'select')
+                                                site = list(inputId = "site", title = "Select site", placeholder = 'select'),
+                                                sex = list(inputId = "sex", title = "Select sex", placeholder = 'select'),
+                                                age = list(inputId = "age", title = "Select age class", placeholder = 'select'),
+                                                id = list(inputId = "id", title = "Select id", placeholder = 'select')
                                               )
                                             )
                               )
@@ -74,6 +71,7 @@ ui <- navbarPage("Lynx Collar Viewer", id="nav",
 # Define server logic 
 server <- function(input, output, session) {
   
+  ## LOAD DATA
   # Define the uploaded Rdata file
   dat <- reactive({
     req(input$file)
@@ -88,24 +86,42 @@ server <- function(input, output, session) {
     dat
   })
   
+  # Subset data for summary table:
+  dat.tbl <- reactive({
+    req(input$file)
+    dat() %>% 
+      group_by("ID" = id, 
+               "Study site" = site,
+               "AgeClass" = age,
+               "Sex" = sex) %>%  # Creates a summary table of the data
+      summarise(
+        "Capture date" = as.Date(first(capture_date)),
+        "Fix schedule" = last(fixsched),
+        "Current fix rate" = last(fixrate),
+        "First fix" = min(date),
+        "Last fix" = max(date)
+      )
+  })
   
+  # Displays a summary table of the data:
+  output$sum.tbl <- DT::renderDT(dat.tbl(), options = list(pageLength = 20))
+  
+  
+  ## MAP
+  
+  # Subset the data based on user input:
   dat.sub <- callModule(
     module = selectizeGroupServer,
     id = "my-filters",
     data = dat,
-    vars = c("site", "sex", "id")
+    vars = c("site", "sex", "age", "id")
   )
-  
-  
-  
-  
-  
-  
-  
+
   # Create a map of the subsetted data:
   output$map <- renderLeaflet({
     CollarMap(dat.sub())
   })
+  
 }
 
 
