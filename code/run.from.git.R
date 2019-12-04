@@ -1,3 +1,3 @@
 library(shiny)
-runGitHub("boreal_lynx", "USFWS")
+runGitHub("collar-viewer", "USFWS")
 
