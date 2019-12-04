@@ -14,7 +14,7 @@ _____________________________
 # GPS Collar Viewer
 
 ## Use
-`if (!require("shiny")) install.packages("shiny")
+`if (!require("shiny")) install.packages("shiny")  
 shiny::runGitHub( "collar-viewer", "USFWS", launch.browser=T)`
 
 ## Description
