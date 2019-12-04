@@ -17,7 +17,7 @@ _____________________________
 To launch the shiny app, install and load the `shiny` package and then run `shiny::runGitHub( "collar-viewer", "USFWS")`.
 
 ## Description
-A shiny app for visualizing and summarizing GPS collar data from lynx in Alaska. 
+An R shiny app for visualizing and summarizing GPS collar data from lynx in Alaska. 
 Currently, users upload a RData file that contains a dataframe named "dat". This dataframe at a minimum contains unprojected GPS fixes 
 (lat/long), collarIDs and dates. These data are imported and mapped using leaflet.
 A summary table is produced that includes includes refuges and fist and last fix
