@@ -9,7 +9,7 @@ An R shiny app for visualizing and summarizing GPS collar data.
 Currently, users upload a RData file that contains a dataframe named "dat". This dataframe at a minimum contains unprojected GPS fixes 
 (lat/long), collarIDs and dates. These data are imported and mapped using leaflet.
 A summary table is produced that includes includes collar id, study site, current fix interval, and first and last fix
-dates. Users can subset the data by study site, id, and sex.
+dates. Users can subset the data by study site, id, age class, and sex.
 
 ## Contact
 McCrea Cobb <mccrea_cobb@fws.gov>
