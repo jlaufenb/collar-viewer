@@ -1,9 +1,9 @@
-#library(DT)
+#' @title Collar viewer
+#' 
+#' @description  An R shiny app for visualizing and summarizing GPS collar data.
+#' @author McCrea Cobb <mccrea_cobb@fws.gov>
+#' @example shiny::runGitHub( "collar-viewer", "USFWS", launch.browser=T)
 
-# A work in progress updating the shiny app
-#
-# Tried to add a panel to upload a RData file of collar data and display 
-# these data in the second panel as a leaflet map.
 
 packages <- c("shiny", "tidyverse", "leaflet", "shinyWidgets", "DT")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
