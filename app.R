@@ -2,6 +2,7 @@
 #' 
 #' @description  An R shiny app for visualizing and summarizing GPS collar data.
 #' @author McCrea Cobb <mccrea_cobb@fws.gov>
+#' 
 #' @example shiny::runGitHub( "collar-viewer", "USFWS", launch.browser=T)
 
 
@@ -16,11 +17,11 @@ library(leaflet)
 library(shinyWidgets)
 library(DT)
 
-# Script the global file:
+# Source files:
 source("code/global.R")
 
 # Define UI for application that draws a histogram
-ui <- navbarPage("Lynx Collar Viewer", id="nav",
+ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                  
                  tabPanel("Load data",
                           # Sidebar layout
