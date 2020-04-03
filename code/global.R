@@ -1,25 +1,24 @@
 ################################################################################
-# Functions Used in the Shiny App for Visualizing Lynx GPS Collars
-#
+# Functions Used in CollarViewer shiny app
+
 # Author: McCrea Cobb <mccrea_cobb@fws.gov>
-# Date created: 9/7/2018
 ################################################################################
 
 
-#-------------------------------------------------------------------------------
-## AESTHETICS
+#----
+## Aesthetics
 
-# color palatte used in the application
+# Color palatte used in the application
 color_pal <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
                "#DD4477", "#66AA00", "#B82E2E", "#316395", "#994499", "#22AA99",
                "#AAAA11", "#6633CC", "#E67300", "#8B0707", "#651067", "#329262",
                "#5574A6", "#3B3EAC")
 
-#-------------------------------------------------------------------------------
-## MAPPING FUNCTIONS
 
-# Map collar data (Input Data tab). One point per day for lines. First and Last points.
-CollarMap <- function(dataframe) {
+#----
+## Mapping functions
+
+collar_map <- function(dataframe) {  # Map collar data. One point per day for lines. First and last points. Used in the Interactive Map tab.
   df <- dataframe %>%
     filter(!(is.na(lon) | is.na(lat))) %>%
     arrange(id, fixtime) %>%
@@ -57,8 +56,55 @@ CollarMap <- function(dataframe) {
   return(map)
 }
 
-# Map points and lines on leaflet map (Spatial Tab)
-mapPoints <- function(map, df) {
+
+
+
+#----
+## Functions used to create dat.move() in the Home Range tab
+
+xy_conv <- function(df, xy = c('lon', 'lat'), CRSin = '+proj=longlat',
+                   CRSout = "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs") { # Alaska Albers
+  # Adds x and y projected coordinates columns to the dataframe containing lat 
+  # and long columns. Used to create maps of home ranges.
+  
+  df <- df[complete.cases(df[, xy]), ]
+  conv <- sp::SpatialPoints(coordinates(cbind('x' = df[, xy[1]],
+                                              'y' = df[, xy[2]])),
+                            proj4string = CRS(CRSin))
+  conv <- sp::spTransform(conv, CRS(CRSout))
+  conv <- data.frame(conv)
+  colnames(conv) <- c('x', 'y')
+  df <- cbind(df, conv)
+  
+  return(df)
+}
+
+
+move_dist <- function(x, y) {  # Returns movement distances (meters) from a vector of projected x and y coordinates. Output is used by moveSpeed().
+  dist <- c(0, sqrt((x[-1] - x[-length(x)])**2 +
+                      (y[-1] - y[-length(y)])**2))
+  return(dist)  # same unit as input (meters)
+}
+
+move_nsd <- function(x, y) {  # Returns a vector of net square displacement values from a vector of projected x and y coordinates. 
+  r2n <- (x - x[1])**2 + (y - y[1])**2
+  r2n <- (r2n - min(r2n))/(max(r2n) - min(r2n))
+  return(r2n)
+}
+
+move_dt <- function(time) {  # Returns the time (seconds) between consecutive time values in a vector of fixtimes. Output is used by moveSpeed().
+  dt <- c(0, unclass(time[-1]) - unclass(time[-length(time)]))
+  return(dt/3600) # seconds
+}
+
+move_speed <- function(dist, time) {  # Returns the movement speed (meters/second) between consecutive GPS collar fixes, from movements distances (meters, output from moveDist()) and time (seconds, output from moveDt()).
+  speed <- (dist/1000)/time
+  speed[is.nan(speed)] <- 0
+  return(speed)
+}
+
+
+map_pts <- function(map, df) {  # Creates a leaflet map object of all GPS collar fixes, with points and lines. Used on the Home Range tab.
   ids <- unique(df$id)
   pal <- rep_len(color_pal, length(ids))
   layers <- list()
@@ -80,8 +126,8 @@ mapPoints <- function(map, df) {
   return(map)
 }
 
-# map polygons on leaflet map
-mapPolygons <- function(map, geojson) {
+
+map_polygons <- function(map, geojson) {  # Adds geoJSON polygons to a leaflet map. Used on the Home Range tab.
   pal <- rep_len(color_pal, length(geojson))
   for (i in seq_along(geojson)) {
     map <- addGeoJSON(map, geojson[[i]], color = pal[i],
@@ -90,119 +136,30 @@ mapPolygons <- function(map, geojson) {
   return(map)
 }
 
-# Calculates net squared displacement:
-Calculate_NSD <- function(dat) {
-  dat <- as.data.frame(dat)
-  #dat$fixtime <- as.character(dat$fixtime)
-  #dat$fixtime <- as.POSIXlt.character(dat$fixtime,
-  #                                      format = ("%m/%d/%Y %H:%M:%S %p"))
-  dat <- dat[complete.cases(dat[, c("lon", "lat")]), ]
-  geocoord <- sp::SpatialPoints(cbind(as.numeric(dat$lon),
-                                      as.numeric(dat$lat)),
-                                proj4string = sp::CRS("+proj=longlat"))
-  utmcoord <- as.data.frame(sp::spTransform(geocoord, sp::CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")))
-  colnames(utmcoord) <- c("Easting", "Northing")
-  dat <- cbind(dat, utmcoord)
-  unq_id <- unique(dat$id)
-  df <- data.frame()
-  for (i in unq_id) {
-    x <- dat[dat$id == i, ]
-    x$NSD <- (x$Easting - x$Easting[1])**2 + (x$Northing - x$Northing[1])**2
-    df <- rbind(df, x)
-  }
-  return(df)
-}
 
-# Plots net squared displacement:
-Plot_NSD <- function(dataframe) {
-  p <- ggplot(dataframe, aes(x = date, y = NSD, group = id)) +
-    geom_line(color = 'firebrick4', size = .75) +
-    facet_wrap(~id) +
-    labs(y = 'Net Squared Displacement') +
-    theme(panel.background = element_rect(fill = 'white'),
-          plot.background = element_rect(fill = 'white'),
-          panel.grid.major.x = element_line(color = 'grey75', size = 1, linetype = 'dotted'),
-          panel.grid.minor.x = element_blank(),
-          panel.grid.major.y = element_line(color = 'grey75', size = 1, linetype = 'dotted'),
-          panel.grid.minor.y = element_blank(),
-          axis.title.x = element_blank(),
-          axis.title.y = element_text(color = 'grey50', size = 14),
-          axis.text.x = element_text(color = 'grey50', size = 10),
-          axis.text.y = element_blank(),
-          axis.ticks = element_blank(),
-          strip.background = element_blank(),
-          strip.text = element_text(color = 'grey50', size = 12))
-  return(p)
-}
 
-DeviceMapping <- function(dataframe, basemap = "Esri.WorldTopoMap") {
-  dat <- as.data.table(dataframe)
-  dat <- dat[complete.cases(dat[, .(lon, lat)])]
-  unq_id <- unique(dat$id)
-  pal <- rep_len(color_pal, length(unq_id))
 
-  device.map <- leaflet() %>%
-    addProviderTiles(basemap, options = providerTileOptions(attribution = NA))
-  layer.group <- list()
 
-  for(i in 1:length(unq_id)) {
-    df <- dat[id == unq_id[i]]
-    device.map <- addPolylines(device.map,
-                               lng = df$lon, lat = df$lat,
-                               group = as.character(unq_id[i]),
-                               color = pal[i],
-                               weight = 1
-    )
-    #df <- df[, .SD[c(seq(1, .N, 5), .N)]]
-    device.map <- addCircleMarkers(device.map,
-                                   lng = df$lon, lat = df$lat,
-                                   group = as.character(unq_id[i]),
-                                   radius = 4,
-                                   stroke = FALSE,
-                                   fillOpacity = .3,
-                                   color = pal[i],
-                                   popup = paste(sep = "<br>",
-                                                 paste("<b>CTN:</b> ", unq_id[i]),
-                                                 paste("<b>Date:</b> ", df$fixtime))
-    )
-    layer.group <- c(layer.group, as.character(unq_id[i]))
-  }
-  device.map <- addLayersControl(device.map, overlayGroups = layer.group)
-  return(device.map)
-}
+#----
+## Brownian Bridge home range functions
 
-DeviceMapping_geojson <- function(device.map, geojson) {
-  pal <- rep_len(color_pal, length(geojson))
-  for (i in seq_along(geojson)) {
-    device.map <- addGeoJSON(device.map, geojson[[i]], color = pal[i],
-                             weight = 1, group = names(geojson)[i])
-  }
-  return(device.map)
-}
-
-to_ltraj <- function(dat) {
+to_ltraj <- function(dat) {  # Returns a ltraj object from a dataframe containing a column of projected x and y coordinates
   dat <- as.data.frame(dat)
   dat$fixtime <- as.POSIXct(dat$fixtime, format = '%Y-%m-%d %H:%M:%S')
   dat <- dat[complete.cases(dat[, c("x", "y", "fixtime")]), ]
-   # coord_conv <- SpatialPoints(cbind(as.numeric(dat$lon),
-   #                                   as.numeric(dat$lat)),
-   #                             proj4string = CRS("+proj=longlat"))
-   # coord_conv <- as.data.frame(spTransform(coord_conv, CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")))
-   # colnames(coord_conv) <- c("Easting", "Northing")
-   # dat <- cbind(dat, coord_conv)
 
-  traj <- as.ltraj(dat[, c("x", "y")], date = dat$fixtime, id = dat$id)
+  traj <-  adehabitatLT::as.ltraj(dat[, c("x", "y")], date = dat$fixtime, id = dat$id)
   return(traj)
 }
 
-# Fucntion to get contours from and plot Brownian Bridge HR:
-estimate_bbmm <- function(traj) {
+estimate_bbmm <- function(traj) {  # Returns a Brownian Bridge contours from a traj object and plot Brownian Bridge HR:
   sig1 <- liker(traj, sig2 = 40, rangesig1 = c(0, 10), plotit = FALSE)
   bb <- kernelbb(traj, sig1[[1]]$sig1, 40, grid = 100)
   return(bb)
 }
 
-get_ud <- function(ud, pct_contour) {
+
+get_ud <- function(ud, pct_contour) {  # Returns a geoJSON of contours. Used in get_mud().
   ud_list <- list(length(pct_contour))
   print('----- Entering contour loop')
   print(paste('-----', pct_contour))
@@ -210,7 +167,7 @@ get_ud <- function(ud, pct_contour) {
     print(paste('-----', pct_contour[[i]]))
     ctr <- getverticeshr(x = ud, percent = pct_contour[[i]])
     ctr@proj4string <- CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
-    ctr <- spTransform(ctr, CRS('+proj=longlat'))
+    ctr <- sp::spTransform(ctr, CRS('+proj=longlat'))
     ctr <- geojson_list(ctr)
     ud_list[[i]] <- ctr
   }
@@ -218,10 +175,25 @@ get_ud <- function(ud, pct_contour) {
   return(geojson)
 }
 
-# Function to get contours from kernel density estimates
-getContours <- function(ud, pct) {
+
+bb_fix <- function(bb) {  # A fix for Brownian bridge calculations
+  if (class(bb) == 'estUDm') {
+    v <- bb
+  } else {
+    v <- list(bb)
+  }
+  return(v)
+}
+
+
+
+#----
+## For maps of kernel and Brownian Bridge home ranges
+
+get_contours <- function(ud, pct) {  # Returns a spatial polygon dataframe of kernel utilization density contours. Used to create maps of kernel and Brownian Bridge home ranges.
+  
   ids <- as.character(pct)
-  x <- getvolumeUD(ud)
+  x <- adehabitatHR::getvolumeUD(ud)
   xyma <- coordinates(x)
   xyl <- list(x = unique(xyma[, 1]), y = unique(xyma[, 2]))
   z <- as.image.SpatialGridDataFrame(x[, 1])$z
@@ -239,120 +211,10 @@ getContours <- function(ud, pct) {
     }), ID = ids[i])
   })
   
-  plys <- lapply(plys, function(x) checkPolygonsHoles(x))
+  plys <- lapply(plys, function(x) maptools::checkPolygonsHoles(x))
   splys <- SpatialPolygons(plys)
   dff <- data.frame(id = ids)
   row.names(dff) <- ids
   spdf <- SpatialPolygonsDataFrame(splys, dff)
   return(spdf)
 }
-get_mud <- function(ud, pct_contour) {
-  gjm_list <- list()
-  print(paste('n elements', length(ud)))
-  print('entering for loop')
-  for (i in 1:length(ud)) {
-    print(paste('before ud', i, 'CTN', names(ud)[i]))
-    gj <- get_ud(ud[[i]], pct_contour)
-    print(paste('before list assignment', i))
-    gjm_list[[i]] <- gj
-  }
-  print('exit loop')
-  names(gjm_list) <- names(ud)
-  return(gjm_list)
-}
-
-#-------------------------------------------------------------------------------
-## MOVEMENT ANALYSIS FUNCTIONS
-
-# Reproject points
-xyConv <- function(df, xy = c('lon', 'lat'), CRSin = '+proj=longlat',
-                   CRSout = "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs") { # Alaska Albers
-  df <- df[complete.cases(df[, xy]), ]
-  conv <- SpatialPoints(coordinates(cbind('x' = df[, xy[1]],
-                                          'y' = df[, xy[2]])),
-                        proj4string = CRS(CRSin))
-  conv <- spTransform(conv, CRS(CRSout))
-  conv <- data.frame(conv)
-  colnames(conv) <- c('x', 'y')
-  df <- cbind(df, conv)
-
-  return(df)
-}
-
-# Calculate movement distance:
-moveDist <- function(x, y) {
-  dist <- c(0, sqrt((x[-1] - x[-length(x)])**2 +
-                      (y[-1] - y[-length(y)])**2))
-  return(dist) # same unit as input (meters)
-}
-# Calculates net square displacement:
-moveNSD <- function(x, y) {
-  r2n <- (x - x[1])**2 + (y - y[1])**2
-  r2n <- (r2n - min(r2n)) / (max(r2n) - min(r2n))
-  return(r2n)
-}
-# Calculates ??
-moveDt <- function(time) {
-  dt <- c(0, unclass(time[-1]) - unclass(time[-length(time)]))
-  return(dt / 3600) # seconds
-}
-# Calculates movement speed
-moveSpeed <- function(dist, time) {
-  speed <- (dist / 1000) / (time)
-  speed[is.nan(speed)] <- 0
-  return(speed)
-}
-
-# Create plots of movement statistics
-movement_eda <- function(dat, plot_var, type = 'line') {
-  pal <- rep_len(color_pal, length(unique(dat$id)))
-
-  p <- ggplot(dat, aes(group = id, color = factor(id), fill = factor(id)))
-  if(type == 'histogram'){
-    p <- p + geom_histogram(aes_string(x = plot_var))
-  } else if (type == 'line'){
-    p <- p + geom_line(aes_string(x = 'fixtime', y = plot_var), size = .75)
-  } else if (type == 'point'){
-    p <- p + geom_point(aes_string(x = 'fixtime', y = plot_var), size = 1.5)
-  }
-  p <- p + facet_wrap(~id, scales = 'free') +
-    scale_color_manual(values = pal) +
-    scale_fill_manual(values = pal) +
-    theme(panel.background = element_rect(fill = 'white'),
-          plot.background = element_rect(fill = 'white'),
-          panel.grid.major.x = element_line(color = 'grey90', size = .5),
-          panel.grid.minor.x = element_blank(),
-          panel.grid.major.y = element_line(color = 'grey90', size = .5),
-          panel.grid.minor.y = element_blank(),
-          legend.position = 'none',
-          axis.title.x = element_blank(),
-          axis.title.y = element_text(color = 'grey50', size = 14),
-          axis.text.x = element_text(color = 'grey50', size = 10),
-          axis.text.y = element_text(color = 'grey50', size = 10),
-          axis.ticks = element_blank(),
-          strip.background = element_blank(),
-          strip.text = element_text(color = 'grey50', size = 12))
-  return(p)
-}
-
-
-# rewrites spatial dataframe names, input must be a list. Facilitates merging into a single spatial dataframe
-correctIDs <- function(contour) {
-  nm <- names(contour)
-  for(i in seq_along(contour)) {
-    row.names(contour[[i]]) <- paste(nm[i], row.names(contour[[i]]))
-    print(row.names(contour[[i]]))
-  }
-  return(contour)
-}
-
-# A fix for the Brownian bridge calculations:
-bbBugFix <- function(bb) {
-  if (class(bb) == 'estUDm') {
-    v <- bb
-  } else {
-    v <- list(bb)
-  }
-  return(v)
-}
-
