@@ -37,7 +37,7 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                           # Sidebar layout
                           fluidPage(
                             fileInput(inputId = "file", 
-                                      label = "Select collar data",
+                                      label = "Select collar data:",
                                       multiple = FALSE,
                                       accept = ".RData")), # used to get the file upload control option
                           
@@ -97,13 +97,14 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                                             bottom = "auto",
                                             width = "20%", 
                                             height = "auto",
+                                            
+                                            HTML("<br>"),
                                           
-                                            selectizeInput("sl_HomeRange", "Select inputs:",
+                                            selectizeInput("sl_HomeRange", "Make a selection:",
                                                            choices = c('Display Points', "Minimum Convex Polygon", "Kernel Density", "Brownian Bridge"),
                                                            selected = 'Display Points'),
-                                            textInput('tx_Contour', 'Contour Percentages', placeholder = '95', value = '95'),
+                                            textInput('tx_Contour', 'Contour Percentages:', placeholder = '95', value = '95'),
                                             actionButton("ac_UpdateMap", "Update Map"),
-                                            # downloadButton('dl_Shape', 'Download Polygon')
                               )
                           )
                  )
@@ -178,8 +179,6 @@ server <- function(input, output, session) {
             paste("<br>"),
             paste("<b>Total Animals:</b> ", length(unique(dat.sub()$id))),
             paste("<b>Total Fixes:</b> ", nrow(dat.sub())),
-            # paste("<b>Error Rate:</b> ",
-            #       round(100 * (dat.na() / nrow(dat.sub())), 4), '%'),
             paste("<b>Min. Date:</b> ", date(min(dat.sub()$date))),
             paste("<b>Max. Date:</b> ", date(max(dat.sub()$date))),
             paste("<br>")
