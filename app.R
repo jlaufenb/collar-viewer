@@ -63,16 +63,16 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                                             width = "20%", 
                                             height = "auto",
                                             
-                                            h4("Select inputs:"),
+                                            htmlOutput("dataInfo"),  # Adds info about the # of fixes, first/last fix, etc
                                             
                                             selectizeGroupUI(
                                               id = "my-filters",
                                               inline = FALSE,
                                               params = list(
-                                                site = list(inputId = "site", title = "Site", placeholder = 'select'),
-                                                sex = list(inputId = "sex", title = "Sex", placeholder = 'select'),
-                                                age = list(inputId = "age", title = "Age class", placeholder = 'select'),
-                                                id = list(inputId = "id", title = "ID", placeholder = 'select')
+                                                site = list(inputId = "site", title = "Site:", placeholder = 'select'),
+                                                sex = list(inputId = "sex", title = "Sex:", placeholder = 'select'),
+                                                age = list(inputId = "age", title = "Age class:", placeholder = 'select'),
+                                                id = list(inputId = "id", title = "ID:", placeholder = 'select')
                                               )
                                             )
                               )
@@ -171,6 +171,20 @@ server <- function(input, output, session) {
     collar_map(dat.sub())
   })
   
+  # Output info for animals selected in map
+  output$dataInfo <- renderUI({
+    HTML(
+      paste(sep = "<br/>",
+            paste("<br>"),
+            paste("<b>Total Animals:</b> ", length(unique(dat.sub()$id))),
+            paste("<b>Total Fixes:</b> ", nrow(dat.sub())),
+            # paste("<b>Error Rate:</b> ",
+            #       round(100 * (dat.na() / nrow(dat.sub())), 4), '%'),
+            paste("<b>Min. Date:</b> ", date(min(dat.sub()$date))),
+            paste("<b>Max. Date:</b> ", date(max(dat.sub()$date))),
+            paste("<br>")
+      ))
+  })
   
 #----
 ## Tab 3: Home Ranges
