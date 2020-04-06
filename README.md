@@ -7,11 +7,7 @@
 You can test the app using the [example dataset](https://github.com/USFWS/collar-viewer/raw/master/data/dat_short.RData).
 
 ## Description
-An R shiny app for visualizing and summarizing GPS collar data. 
-Currently, users upload a RData file that contains a dataframe named "dat". This dataframe at a minimum contains unprojected GPS fixes 
-(lat/long), collarIDs and dates. These data are imported and mapped using leaflet.
-A summary table is produced that includes includes collar id, study site, current fix interval, and first and last fix
-dates. Users can subset the data by study site, id, age class, and sex.
+An R shiny app for visualizing and summarizing GPS collar data. Users upload a RData file following [this template](https://github.com/USFWS/collar-viewer/raw/master/data/dat_short.RData). These data are imported and a summary table is produced that includes includes collar id, study site, current fix interval, and first and last fix dates. Users can view a leaflet map of the dataset (subsetted to one fix daily to increase processing speed) and subset the data by study site, id, age class, and sex. Users can view fix locations and home ranges (minimum convex polygon, kernel and Brownian Bridge) of the subsetted data.
 
 ## Contact
 McCrea Cobb <mccrea_cobb@fws.gov>
