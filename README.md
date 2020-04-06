@@ -4,7 +4,7 @@
 `if (!require("shiny")) install.packages("shiny")`  
 `shiny::runGitHub( "collar-viewer", "USFWS", launch.browser=T)`
 
-You can test the app using the example dataset: `https://github.com/USFWS/collar-viewer/raw/master/data/dat_short.RData`.
+You can test the app using the [example dataset](https://github.com/USFWS/collar-viewer/raw/master/data/dat_short.RData).
 
 ## Description
 An R shiny app for visualizing and summarizing GPS collar data. 
