@@ -6,7 +6,7 @@
 #' @example shiny::runGitHub( "collar-viewer", "USFWS", launch.browser=T)
 
 
-packages <- c("shiny", "tidyverse", "leaflet", "shinyWidgets", "DT", "sp", 
+packages <- c("shiny", "shinyjs", "tidyverse", "leaflet", "shinyWidgets", "DT", "sp", 
               "rgdal","adehabitatLT", "adehabitatHR", "lubridate", "geojsonio",
               "maptools")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
@@ -14,6 +14,7 @@ if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
 }
 
 library(shiny)
+library(shinyjs)
 library(tidyverse)
 library(leaflet)
 library(shinyWidgets)
