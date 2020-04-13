@@ -28,7 +28,7 @@ library(geojsonio)
 library(maptools)
 
 # Source files:
-source("code/global.R")
+source("code/functions/global.R")
 
 # Define UI for application that draws a histogram
 ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
