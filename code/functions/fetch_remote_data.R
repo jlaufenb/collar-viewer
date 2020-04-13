@@ -63,7 +63,6 @@ fetch_remote_data <- function(flat.gps, dat.collar, clean, save, savedir, return
       filter(!(id == "700521A" & date > as.Date("2018-10-28")),      # Remove fixes after 700521A (KNI) was trapped
              id == "700552A" & date > as.Date("2018-06-18"),         # Remove fixes after 700552A (YF) died
              !(id == "700534A" & date > as.Date("2018-05-04"))) %>%  # Remove fixes after 700534A (Kanuti) died (? or went off air..)
-      filter() %>%  
       arrange(ctn, fixtime)
   }
   

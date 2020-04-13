@@ -1,7 +1,6 @@
 ################################################################################
-# Functions Used in CollarViewer shiny app
-
-# Author: McCrea Cobb <mccrea_cobb@fws.gov>
+# Global functions used in collar-viewer shiny app
+# McCrea Cobb <mccrea_cobb@fws.gov>
 ################################################################################
 
 
@@ -18,8 +17,22 @@ color_pal <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
 #----
 ## Mapping functions
 
-collar_map <- function(dataframe) {  # Map collar data. One point per day for lines. First and last points. Used in the Interactive Map tab.
-  df <- dataframe %>%
+
+#' collar_map
+#' 
+#' @description 
+#' 
+#' @author McCrea Cobb <mccrea_cobb@fws.gov
+#'
+#' @param gps_collar A dataframe of GPS collar fixes... 
+#'
+#' @return A leaflet map of fix locations, subsetted to one daily fix.
+#' @export
+#'
+#' @examples collar_map(dat)
+#' 
+collar_map <- function(gps_collar) {  # Map collar data. One point per day for lines. First and last points. Used in the Interactive Map tab.
+  df <- gps_collar %>%
     filter(!(is.na(lon) | is.na(lat))) %>%
     arrange(id, fixtime) %>%
     group_by(id, lubridate::as_date(fixtime)) %>%
@@ -62,10 +75,23 @@ collar_map <- function(dataframe) {  # Map collar data. One point per day for li
 #----
 ## Functions used to create dat.move() in the Home Range tab
 
+#' xy_conv
+#'
+#' @description Adds x and y projected coordinates columns to the dataframe 
+#' containing lat and long columns. Used to create maps of home ranges.
+#' 
+#' @param df 
+#' @param xy 
+#' @param CRSin 
+#' @param CRSout 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' 
 xy_conv <- function(df, xy = c('lon', 'lat'), CRSin = '+proj=longlat',
                    CRSout = "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs") { # Alaska Albers
-  # Adds x and y projected coordinates columns to the dataframe containing lat 
-  # and long columns. Used to create maps of home ranges.
   
   df <- df[complete.cases(df[, xy]), ]
   conv <- sp::SpatialPoints(coordinates(cbind('x' = df[, xy[1]],
@@ -80,31 +106,92 @@ xy_conv <- function(df, xy = c('lon', 'lat'), CRSin = '+proj=longlat',
 }
 
 
-move_dist <- function(x, y) {  # Returns movement distances (meters) from a vector of projected x and y coordinates. Output is used by moveSpeed().
+#' move_dist
+#'
+#' @description Output is used by moveSpeed().
+#' 
+#' @param x A vector of projected x coordinates. 
+#' @param y A vector of projected y coordinates. 
+#'
+#' @return A vector of movement distances (meters).
+#' @export
+#'
+#' @examples
+#' 
+move_dist <- function(x, y) {  # 
   dist <- c(0, sqrt((x[-1] - x[-length(x)])**2 +
                       (y[-1] - y[-length(y)])**2))
   return(dist)  # same unit as input (meters)
 }
 
-move_nsd <- function(x, y) {  # Returns a vector of net square displacement values from a vector of projected x and y coordinates. 
+#' move_nsd
+#' 
+#' @description 
+#'
+#' @param x A vector of projected x coordinates.
+#' @param y A vector of projected y coordinates.
+#'
+#' @return A vector of net square displacement values. 
+#' @export
+#'
+#' @examples
+#' 
+move_nsd <- function(x, y) {
   r2n <- (x - x[1])**2 + (y - y[1])**2
   r2n <- (r2n - min(r2n))/(max(r2n) - min(r2n))
   return(r2n)
 }
 
-move_dt <- function(time) {  # Returns the time (seconds) between consecutive time values in a vector of fixtimes. Output is used by moveSpeed().
+#' move_dt
+#'
+#' @description 
+#' 
+#' @param time 
+#'
+#' @return The time (seconds) between consecutive time values in a vector of 
+#' fixtimes. Output is used by moveSpeed().
+#' @export
+#'
+#' @examples
+#' 
+move_dt <- function(time) {
   dt <- c(0, unclass(time[-1]) - unclass(time[-length(time)]))
   return(dt/3600) # seconds
 }
 
-move_speed <- function(dist, time) {  # Returns the movement speed (meters/second) between consecutive GPS collar fixes, from movements distances (meters, output from moveDist()) and time (seconds, output from moveDt()).
+#' move_speed
+#' 
+#' @description 
+#' 
+#' @param dist Movement distances (meters) output from moveDist().
+#' @param time Movement time (seconds) output from moveDt().
+#'
+#' @return The movement speed (meters/second) between consecutive GPS collar fixes.
+#' @export
+#'
+#' @examples
+#' 
+move_speed <- function(dist, time) {  # 
   speed <- (dist/1000)/time
   speed[is.nan(speed)] <- 0
   return(speed)
 }
 
 
-map_pts <- function(map, df) {  # Creates a leaflet map object of all GPS collar fixes, with points and lines. Used on the Home Range tab.
+#' map_pts
+#' 
+#' @description Creates a leaflet map object of all GPS collar fixes, with 
+#' points and lines. Used on the Home Range tab.
+#'
+#' @param map 
+#' @param df 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' 
+map_pts <- function(map, df) {
   ids <- unique(df$id)
   pal <- rep_len(color_pal, length(ids))
   layers <- list()
@@ -127,7 +214,19 @@ map_pts <- function(map, df) {  # Creates a leaflet map object of all GPS collar
 }
 
 
-map_polygons <- function(map, geojson) {  # Adds geoJSON polygons to a leaflet map. Used on the Home Range tab.
+#' map_polygons
+#' 
+#' @description Adds geoJSON polygons to a leaflet map. Used on the Home Range tab.
+#'
+#' @param map 
+#' @param geojson 
+#'
+#' @return 
+#' @export
+#'
+#' @examples
+#' 
+map_polygons <- function(map, geojson) {
   pal <- rep_len(color_pal, length(geojson))
   for (i in seq_along(geojson)) {
     map <- addGeoJSON(map, geojson[[i]], color = pal[i],
@@ -143,7 +242,18 @@ map_polygons <- function(map, geojson) {  # Adds geoJSON polygons to a leaflet m
 #----
 ## Brownian Bridge home range functions
 
-to_ltraj <- function(dat) {  # Returns a ltraj object from a dataframe containing a column of projected x and y coordinates
+#' to_ltraj
+#' 
+#' @description 
+#'
+#' @param dat A dataframe containing a column of projected x and y coordinates.
+#'
+#' @return A ltraj object.
+#' @export
+#'
+#' @examples
+#' 
+to_ltraj <- function(dat) {
   dat <- as.data.frame(dat)
   dat$fixtime <- as.POSIXct(dat$fixtime, format = '%Y-%m-%d %H:%M:%S')
   dat <- dat[complete.cases(dat[, c("x", "y", "fixtime")]), ]
@@ -152,14 +262,37 @@ to_ltraj <- function(dat) {  # Returns a ltraj object from a dataframe containin
   return(traj)
 }
 
-estimate_bbmm <- function(traj) {  # Returns a Brownian Bridge contours from a traj object and plot Brownian Bridge HR:
+#' estimate_bbmm
+#' 
+#' @description 
+#'
+#' @param traj 
+#'
+#' @return Brownian Bridge contours from a traj object and plot Brownian Bridge HR.
+#' @export
+#'
+#' @examples
+#' 
+estimate_bbmm <- function(traj) {
   sig1 <- liker(traj, sig2 = 40, rangesig1 = c(0, 10), plotit = FALSE)
   bb <- kernelbb(traj, sig1[[1]]$sig1, 40, grid = 100)
   return(bb)
 }
 
 
-get_ud <- function(ud, pct_contour) {  # Returns a geoJSON of contours. Used in get_mud().
+#' get_ud
+#' 
+#' @description Used in get_mud().
+#'
+#' @param ud 
+#' @param pct_contour 
+#'
+#' @return A geoJSON of contours. 
+#' @export
+#'
+#' @examples
+#' 
+get_ud <- function(ud, pct_contour) {
   ud_list <- list(length(pct_contour))
   print('----- Entering contour loop')
   print(paste('-----', pct_contour))
@@ -176,6 +309,17 @@ get_ud <- function(ud, pct_contour) {  # Returns a geoJSON of contours. Used in 
 }
 
 
+#' bb_fix
+#' 
+#' @description 
+#'
+#' @param bb 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' 
 bb_fix <- function(bb) {  # A fix for Brownian bridge calculations
   if (class(bb) == 'estUDm') {
     v <- bb
@@ -190,7 +334,20 @@ bb_fix <- function(bb) {  # A fix for Brownian bridge calculations
 #----
 ## For maps of kernel and Brownian Bridge home ranges
 
-get_contours <- function(ud, pct) {  # Returns a spatial polygon dataframe of kernel utilization density contours. Used to create maps of kernel and Brownian Bridge home ranges.
+#' get_contours
+#' 
+#' @description 
+#'
+#' @param ud 
+#' @param pct 
+#'
+#' @return A spatial polygon dataframe of kernel utilization density 
+#' contours. Used to create maps of kernel and Brownian Bridge home ranges.
+#' @export
+#'
+#' @examples
+#' 
+get_contours <- function(ud, pct) {  # 
   
   ids <- as.character(pct)
   x <- adehabitatHR::getvolumeUD(ud)
