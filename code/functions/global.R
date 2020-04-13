@@ -20,7 +20,8 @@ color_pal <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
 
 #' collar_map
 #' 
-#' @description 
+#' @description Map collar data. One point per day for lines. First and last 
+#' points. Used in the Interactive Map tab.
 #' 
 #' @author McCrea Cobb <mccrea_cobb@fws.gov
 #'
@@ -31,7 +32,7 @@ color_pal <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
 #'
 #' @examples collar_map(dat)
 #' 
-collar_map <- function(gps_collar) {  # Map collar data. One point per day for lines. First and last points. Used in the Interactive Map tab.
+collar_map <- function(gps_collar) {
   df <- gps_collar %>%
     filter(!(is.na(lon) | is.na(lat))) %>%
     arrange(id, fixtime) %>%
@@ -171,7 +172,7 @@ move_dt <- function(time) {
 #'
 #' @examples
 #' 
-move_speed <- function(dist, time) {  # 
+move_speed <- function(dist, time) {
   speed <- (dist/1000)/time
   speed[is.nan(speed)] <- 0
   return(speed)
