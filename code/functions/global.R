@@ -18,14 +18,14 @@ color_pal <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
 ## Mapping functions
 
 
-#' collar_map
+#' Leaflet map of GPS collar data
 #' 
 #' @description Map collar data. One point per day for lines. First and last 
-#' points. Used in the Interactive Map tab.
+#' points.
 #' 
 #' @author McCrea Cobb <mccrea_cobb@fws.gov
 #'
-#' @param gps_collar A dataframe of GPS collar fixes... 
+#' @param gps_collar A dataframe of GPS collar fixes containing lat, lon, and id, site and fixtime fields 
 #'
 #' @return A leaflet map of fix locations, subsetted to one daily fix.
 #' @export
@@ -76,20 +76,20 @@ collar_map <- function(gps_collar) {
 #----
 ## Functions used to create dat.move() in the Home Range tab
 
-#' xy_conv
+#' Add projected coordinates to a dataframe
 #'
-#' @description Adds x and y projected coordinates columns to the dataframe 
-#' containing lat and long columns. Used to create maps of home ranges.
+#' @description Add x and y projected coordinates to the dataframe containing latitude and longitude coordinates
 #' 
-#' @param df 
-#' @param xy 
-#' @param CRSin 
-#' @param CRSout 
+#' @param df A dataframe containing unprojected lat and long coordinates
+#' @param xy Combined vectors containing lat and long variables.
+#' @param CRSin The coordinate reference system id of \code{df}.
+#' @param CRSout The desired output coordinate reference system id for the projected x and y values.
 #'
 #' @return
 #' @export
 #'
-#' @examples
+#' @examples xy_conv(df, xy = c('lon', 'lat'), CRSin = '+proj=longlat',
+#' CRSout = "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"))
 #' 
 xy_conv <- function(df, xy = c('lon', 'lat'), CRSin = '+proj=longlat',
                    CRSout = "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs") { # Alaska Albers
@@ -107,70 +107,72 @@ xy_conv <- function(df, xy = c('lon', 'lat'), CRSin = '+proj=longlat',
 }
 
 
-#' move_dist
+#' Calculate movement distance
 #'
-#' @description Output is used by moveSpeed().
+#' @description Calculate movement distances. Used by \code{move_speed()}.
 #' 
 #' @param x A vector of projected x coordinates. 
 #' @param y A vector of projected y coordinates. 
 #'
-#' @return A vector of movement distances (meters).
+#' @return A vector of movement distances. The units are dependent upon the CRS of \code{x} and \code{y}. For most applications, it will be meters.
 #' @export
 #'
-#' @examples
+#' @examples move_dist(x, y)
 #' 
-move_dist <- function(x, y) {  # 
-  dist <- c(0, sqrt((x[-1] - x[-length(x)])**2 +
-                      (y[-1] - y[-length(y)])**2))
+move_dist <- function(x, y) { 
+  dist <- c(0, sqrt((x[-1] - x[-length(x)])^2 +
+                      (y[-1] - y[-length(y)])^2))
   return(dist)  # same unit as input (meters)
 }
 
-#' move_nsd
+
+#' Calculate net squared displacement 
 #' 
-#' @description 
+#' @description Calculate net squared displacement. Used by \code{move_speed()}.
 #'
 #' @param x A vector of projected x coordinates.
 #' @param y A vector of projected y coordinates.
 #'
-#' @return A vector of net square displacement values. 
+#' @return A vector of net square displacement values. The units are dependent upon the CRS of \code{x} and \code{y}. For most applications, it will be meters.
 #' @export
 #'
-#' @examples
+#' @examples move_nst(x, y)
 #' 
 move_nsd <- function(x, y) {
-  r2n <- (x - x[1])**2 + (y - y[1])**2
+  r2n <- (x - x[1])^2 + (y - y[1])^2
   r2n <- (r2n - min(r2n))/(max(r2n) - min(r2n))
   return(r2n)
 }
 
-#' move_dt
+
+#' Calculate time between consecutive GPS fixes
 #'
-#' @description 
+#' @description Calculate the time between consecutive GPS fixes. Used by \code{move_speed()}.
 #' 
-#' @param time 
+#' @param time A vector of POSIXct times.
 #'
-#' @return The time (seconds) between consecutive time values in a vector of 
-#' fixtimes. Output is used by moveSpeed().
+#' @return The time in seconds between consecutive time values in a vector of 
+#' fixtimes. 
 #' @export
 #'
-#' @examples
+#' @examples move_dt(fixtime)
 #' 
 move_dt <- function(time) {
   dt <- c(0, unclass(time[-1]) - unclass(time[-length(time)]))
   return(dt/3600) # seconds
 }
 
-#' move_speed
+#' Calculate speed of consecutive GPS fixes
 #' 
-#' @description 
+#' @description Calculate speed of consecutive GPS fixes.
 #' 
-#' @param dist Movement distances (meters) output from moveDist().
-#' @param time Movement time (seconds) output from moveDt().
+#' @param dist A vector of movement distances returned from \code{move_dist()}.
+#' @param time A vector of movement times (seconds) returned from \code{move_dt()}.
 #'
-#' @return The movement speed (meters/second) between consecutive GPS collar fixes.
+#' @return The movement speed between consecutive GPS collar fixes, generally in meters/second.
 #' @export
 #'
-#' @examples
+#' @examples move_speed(Distance, dTime)
 #' 
 move_speed <- function(dist, time) {
   speed <- (dist/1000)/time
@@ -179,18 +181,17 @@ move_speed <- function(dist, time) {
 }
 
 
-#' map_pts
+#' Create leaflet map of subsetted GPS collars
 #' 
-#' @description Creates a leaflet map object of all GPS collar fixes, with 
-#' points and lines. Used on the Home Range tab.
+#' @description Create a leaflet map object of GPS collar fixes that includes lines connecting consecutive points. Used on the Home Range tab.
 #'
-#' @param map 
-#' @param df 
+#' @param map A leaflet map object
+#' @param df A dataframe of GPS collar fixes that include lat, lon, id, and fixtime variables.
 #'
-#' @return
+#' @return A leaflet map object with points and lines
 #' @export
 #'
-#' @examples
+#' @examples map_pts(map, df)
 #' 
 map_pts <- function(map, df) {
   ids <- unique(df$id)
@@ -215,17 +216,17 @@ map_pts <- function(map, df) {
 }
 
 
-#' map_polygons
+#' Create leaflet map of home range polygons
 #' 
-#' @description Adds geoJSON polygons to a leaflet map. Used on the Home Range tab.
+#' @description Add geoJSON polygons to a leaflet map. Used on the Home Range tab.
 #'
-#' @param map 
-#' @param geojson 
+#' @param map A leaflet map object
+#' @param geojson A geoJSON polygon containing home range contours
 #'
-#' @return 
+#' @return A leaflet map object with home range contours
 #' @export
 #'
-#' @examples
+#' @examples map_polygons(map, hr)
 #' 
 map_polygons <- function(map, geojson) {
   pal <- rep_len(color_pal, length(geojson))
@@ -243,16 +244,16 @@ map_polygons <- function(map, geojson) {
 #----
 ## Brownian Bridge home range functions
 
-#' to_ltraj
+#' Create a trajectory object
 #' 
-#' @description 
+#' @description Create an \code{ltraj} trajectory object for Brownian Bridge home range estimates
 #'
-#' @param dat A dataframe containing a column of projected x and y coordinates.
+#' @param dat A dataframe containing projected x and y coordinates and associated POSIXct times
 #'
-#' @return A ltraj object.
+#' @return A \code{adehabitatHR::ltraj()} trajectory object
 #' @export
 #'
-#' @examples
+#' @examples to_ltraj(dat)
 #' 
 to_ltraj <- function(dat) {
   dat <- as.data.frame(dat)
@@ -263,20 +264,22 @@ to_ltraj <- function(dat) {
   return(traj)
 }
 
-#' estimate_bbmm
+
+#' Estimate Brownian Bridge home range
 #' 
-#' @description 
+#' @description Estimate Brownian Bridge home range utlization distribution
 #'
-#' @param traj 
+#' @param traj A \code{adehabitatHR::ltraj()} trajectory object
 #'
-#' @return Brownian Bridge contours from a traj object and plot Brownian Bridge HR.
+#' @return An \code{estUDm} object with an estimate of a Brownian Bridge home range utilization distribution
+#' 
 #' @export
 #'
-#' @examples
+#' @examples estimate_bbmm(traj)
 #' 
 estimate_bbmm <- function(traj) {
-  sig1 <- liker(traj, sig2 = 40, rangesig1 = c(0, 10), plotit = FALSE)
-  bb <- kernelbb(traj, sig1[[1]]$sig1, 40, grid = 100)
+  sig1 <- adehabitatHR::liker(traj, sig2 = 40, rangesig1 = c(0, 10), plotit = FALSE)
+  bb <- adehabitatHR::kernelbb(traj, sig1[[1]]$sig1, 40, grid = 100)
   return(bb)
 }
 
