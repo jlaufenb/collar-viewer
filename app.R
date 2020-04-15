@@ -104,7 +104,7 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                                             selectizeInput("sl_HomeRange", "Make a selection:",
                                                            choices = c('Display Points', "Minimum Convex Polygon", "Kernel Density", "Brownian Bridge"),
                                                            selected = 'Display Points'),
-                                            textInput('tx_Contour', 'Contour Percentages:', placeholder = '95', value = '95'),
+                                            textInput('tx_Contour', 'Contour Percentages:', placeholder = '50, 95', value = '50, 95'),
                                             actionButton("ac_UpdateMap", "Update Map"),
                               )
                           )
@@ -133,6 +133,8 @@ server <- function(input, output, session) {
     e = new.env()
     name <- load(file, envir = e)
     dat <- e[[name]]
+    dat <- dat %>%
+      filter(!is.na(lat))
     dat
   })
   

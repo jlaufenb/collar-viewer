@@ -4,6 +4,7 @@
 ################################################################################
 
 
+
 #----
 ## Aesthetics
 
@@ -12,6 +13,7 @@ color_pal <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
                "#DD4477", "#66AA00", "#B82E2E", "#316395", "#994499", "#22AA99",
                "#AAAA11", "#6633CC", "#E67300", "#8B0707", "#651067", "#329262",
                "#5574A6", "#3B3EAC")
+
 
 
 #----
@@ -72,9 +74,9 @@ collar_map <- function(gps_collar) {
 
 
 
-
 #----
 ## Functions used to create dat.move() in the Home Range tab
+
 
 #' Add projected coordinates to a dataframe
 #'
@@ -107,6 +109,7 @@ xy_conv <- function(df, xy = c('lon', 'lat'), CRSin = '+proj=longlat',
 }
 
 
+
 #' Calculate movement distance
 #'
 #' @description Calculate movement distances. Used by \code{move_speed()}.
@@ -124,6 +127,7 @@ move_dist <- function(x, y) {
                       (y[-1] - y[-length(y)])^2))
   return(dist)  # same unit as input (meters)
 }
+
 
 
 #' Calculate net squared displacement 
@@ -145,6 +149,7 @@ move_nsd <- function(x, y) {
 }
 
 
+
 #' Calculate time between consecutive GPS fixes
 #'
 #' @description Calculate the time between consecutive GPS fixes. Used by \code{move_speed()}.
@@ -161,6 +166,8 @@ move_dt <- function(time) {
   dt <- c(0, unclass(time[-1]) - unclass(time[-length(time)]))
   return(dt/3600) # seconds
 }
+
+
 
 #' Calculate speed of consecutive GPS fixes
 #' 
@@ -179,6 +186,7 @@ move_speed <- function(dist, time) {
   speed[is.nan(speed)] <- 0
   return(speed)
 }
+
 
 
 #' Create leaflet map of subsetted GPS collars
@@ -216,6 +224,7 @@ map_pts <- function(map, df) {
 }
 
 
+
 #' Create leaflet map of home range polygons
 #' 
 #' @description Add geoJSON polygons to a leaflet map. Used on the Home Range tab.
@@ -236,7 +245,6 @@ map_polygons <- function(map, geojson) {
   }
   return(map)
 }
-
 
 
 
@@ -265,6 +273,7 @@ to_ltraj <- function(dat) {
 }
 
 
+
 #' Estimate Brownian Bridge home range
 #' 
 #' @description Estimate Brownian Bridge home range utlization distribution
@@ -284,45 +293,17 @@ estimate_bbmm <- function(traj) {
 }
 
 
-#' get_ud
+
+#' Fix for Brownian Bridge home ranges
 #' 
-#' @description Used in get_mud().
+#' @description Fix for Brownian Bridge home ranges
 #'
-#' @param ud 
-#' @param pct_contour 
+#' @param bb An \code{estUDm} object with an estimate of a Brownian Bridge home range utilization distribution
 #'
-#' @return A geoJSON of contours. 
+#' @return An \code{estUDm} object or list of \code{estUDm} objects with an estimate of a Brownian Bridge home range utilization distribution
 #' @export
 #'
-#' @examples
-#' 
-get_ud <- function(ud, pct_contour) {
-  ud_list <- list(length(pct_contour))
-  print('----- Entering contour loop')
-  print(paste('-----', pct_contour))
-  for (i in seq_along(pct_contour)) {
-    print(paste('-----', pct_contour[[i]]))
-    ctr <- getverticeshr(x = ud, percent = pct_contour[[i]])
-    ctr@proj4string <- CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
-    ctr <- sp::spTransform(ctr, CRS('+proj=longlat'))
-    ctr <- geojson_list(ctr)
-    ud_list[[i]] <- ctr
-  }
-  geojson <- geojson_json(Reduce(`+`, ud_list))
-  return(geojson)
-}
-
-
-#' bb_fix
-#' 
-#' @description 
-#'
-#' @param bb 
-#'
-#' @return
-#' @export
-#'
-#' @examples
+#' @examples bb_fix(bb)
 #' 
 bb_fix <- function(bb) {  # A fix for Brownian bridge calculations
   if (class(bb) == 'estUDm') {
@@ -338,23 +319,20 @@ bb_fix <- function(bb) {  # A fix for Brownian bridge calculations
 #----
 ## For maps of kernel and Brownian Bridge home ranges
 
-#' get_contours
+#' Get home range contours
 #' 
 #' @description 
 #'
-#' @param ud 
-#' @param pct 
+#' @param ud A \code{estUD} object returned from \code{adehabitatHR::kernelUD()} or code\{adehabitatHR::kernelbb()}
+#' @param pct Vector of numeric values specifying the desired percent contours of the resulting home range polygon
 #'
-#' @return A spatial polygon dataframe of kernel utilization density 
-#' contours. Used to create maps of kernel and Brownian Bridge home ranges.
-#' @export
+#' @return A spatial polygon dataframe of kernel or Brownian Bridge utilization density contours
 #'
-#' @examples
+#' @examples get_contours(kd, c(50, 95))
 #' 
-get_contours <- function(ud, pct) {  # 
-  
+get_contours <- function(ud, pct) {
   ids <- as.character(pct)
-  x <- adehabitatHR::getvolumeUD(ud)
+  x <- getvolumeUD(ud)
   xyma <- coordinates(x)
   xyl <- list(x = unique(xyma[, 1]), y = unique(xyma[, 2]))
   z <- as.image.SpatialGridDataFrame(x[, 1])$z
@@ -372,7 +350,7 @@ get_contours <- function(ud, pct) {  #
     }), ID = ids[i])
   })
   
-  plys <- lapply(plys, function(x) maptools::checkPolygonsHoles(x))
+  plys <- lapply(plys, function(x) checkPolygonsHoles(x))
   splys <- SpatialPolygons(plys)
   dff <- data.frame(id = ids)
   row.names(dff) <- ids
