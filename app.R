@@ -26,6 +26,7 @@ library(adehabitatHR)
 library(lubridate)
 library(geojsonio)
 library(maptools)
+library(dplyr)
 
 # Source files:
 source("code/functions/global.R")
@@ -100,7 +101,7 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                                             height = "auto",
                                             
                                             HTML("<br>"),
-                                          
+                                            
                                             selectizeInput("sl_HomeRange", "Make a selection:",
                                                            choices = c('Display Points', "Minimum Convex Polygon", "Kernel Density", "Brownian Bridge"),
                                                            selected = 'Display Points'),
@@ -119,8 +120,8 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
 # Define server logic 
 server <- function(input, output, session) {
   
-#----
-## Tab 1: Load data
+  #----
+  ## Tab 1: Load data
   
   # Define the uploaded Rdata file
   dat <- reactive({
@@ -150,17 +151,19 @@ server <- function(input, output, session) {
         "Capture date" = as.Date(first(capture_date)),
         "Fix schedule" = last(fixsched),
         "Current fix rate" = last(fixrate),
-        "First fix" = min(date),
-        "Last fix" = max(date)
-      )
+        "First fix" = min(as.Date(fixtime)),
+        "Last fix" = max(as.Date(fixtime)))
   })
   
   # Displays a summary table of the data:
   output$sum.tbl <- DT::renderDT(dat.tbl(), options = list(pageLength = 20))
   
+  # dat.map <- dat %>%
+  #   select(c(id, fixtime, lat, lon, sex, age, )
   
-#----
-## Tab 2: Map
+  
+  #----
+  ## Tab 2: Map
   
   # Subset the data based on user input:
   dat.sub <- callModule(
@@ -182,14 +185,14 @@ server <- function(input, output, session) {
             paste("<br>"),
             paste("<b>Total Animals:</b> ", length(unique(dat.sub()$id))),
             paste("<b>Total Fixes:</b> ", nrow(dat.sub())),
-            paste("<b>Min. Date:</b> ", date(min(dat.sub()$date))),
-            paste("<b>Max. Date:</b> ", date(max(dat.sub()$date))),
+            paste("<b>Min. Date:</b> ", as.Date(min(dat.sub()$fixtime))),
+            paste("<b>Max. Date:</b> ", as.Date(max(dat.sub()$fixtime))),
             paste("<br>")
       ))
   })
   
-#----
-## Tab 3: Home Ranges
+  #----
+  ## Tab 3: Home Ranges
   
   dat.move <- eventReactive(input$ac_UpdateMap, {
     ## Creates a dataframe of movement parameters for analysis
@@ -249,7 +252,7 @@ server <- function(input, output, session) {
       
       bb <- to_ltraj(df)  # sourced from global.R
       bb <- estimate_bbmm(bb)  # sourced from global.R
-      bb <- bb_fix(bb)  # sourced from global.R
+      #bb <- bb_fix(bb)  # sourced from global.R
       hr <- lapply(bb, function(x) get_contours(x, pct_contour()))  # get_contours() sourced from global.R
       for (i in seq_along(bb)) {
         hr[[i]]@proj4string <- sp::CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")

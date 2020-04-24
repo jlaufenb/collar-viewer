@@ -286,13 +286,23 @@ to_ltraj <- function(dat) {
 #'
 #' @examples estimate_bbmm(traj)
 #' 
+# **This needs updating because the sigmas need to vary by individual home range instead of using a single value across all animals.**
 estimate_bbmm <- function(traj) {
   sig1 <- adehabitatHR::liker(traj, sig2 = 40, rangesig1 = c(0, 10), plotit = FALSE)
   bb <- adehabitatHR::kernelbb(traj, sig1[[1]]$sig1, 40, grid = 100)
   return(bb)
 }
 
-
+# estimate_bbmm <- function(traj) {
+#   sig1 <- adehabitatHR::liker(traj, sig2 = 40, rangesig1 = c(0, 10), plotit = FALSE)
+#   bb <- lapply(1:length(traj), function(x) {
+#     adehabitatHR::kernelbb(traj[x], sig1[[x]]$sig1, 40, grid = 100)
+#   })
+#   names(bb) <- lapply(1:length(traj), function(x) {
+#     attr(traj[[x]], "id")
+#   })
+#   return(bb)
+# }
 
 #' Fix for Brownian Bridge home ranges
 #' 

@@ -30,7 +30,7 @@ setwd("C:/Users/mcobb/OneDrive - DOI/products/r_shiny_apps/collar-viewer")
 
 ## Fetch the flat file dataset and add in the capture data variables (age class, study site):
 source("./code/functions/fetch_remote_data.R")
-fetch_remote_data(flat.gps = "s:/InvMon/biometrics/_projects/refuge/_regional_projects/collar-viewer/data/derived_data/gps_collar/telonics/flat.gps.gzip",
+fetch_remote_data(flat.gps = "s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/data/derived_data/gps_collar/telonics/flat.gps.gzip",
               dat.collar = "s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/data/raw_data/capture/capture_data.RData",
               clean = TRUE,
               save = TRUE,
