@@ -11,8 +11,8 @@ An R shiny app for visualizing and summarizing GPS collar data. Users upload a R
 
 ## Contact
 McCrea Cobb <mccrea_cobb@fws.gov>
-_____________________________
 
+## License
 The United States Fish and Wildlife Service (FWS) GitHub project code is provided on 
 an "as is" basis and the user assumes responsibility for its use. FWS has relinquished 
 control of the information and no longer has responsibility to protect the integrity, 
