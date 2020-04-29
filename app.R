@@ -74,7 +74,7 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                                                 site = list(inputId = "site", title = "Site:", placeholder = 'select'),
                                                 sex = list(inputId = "sex", title = "Sex:", placeholder = 'select'),
                                                 age = list(inputId = "age", title = "Age class:", placeholder = 'select'),
-                                                id = list(inputId = "id", title = "ID:", placeholder = 'select')
+                                                id = list(inputId = "ctn", title = "CTN:", placeholder = 'select')
                                               )
                                             )
                               )
@@ -143,7 +143,7 @@ server <- function(input, output, session) {
   dat.tbl <- reactive({
     req(input$file)
     dat() %>% 
-      group_by("ID" = id, 
+      group_by("CTN" = ctn, 
                "Study site" = site,
                "Age class" = age,
                "Sex" = sex) %>%  # Creates a summary table of the data
@@ -170,7 +170,7 @@ server <- function(input, output, session) {
     module = selectizeGroupServer,
     id = "my-filters",
     data = dat,
-    vars = c("site", "sex", "age", "id")
+    vars = c("site", "sex", "age", "ctn")
   )
   
   # Create a map of the subsetted data:
@@ -183,7 +183,7 @@ server <- function(input, output, session) {
     HTML(
       paste(sep = "<br/>",
             paste("<br>"),
-            paste("<b>Total Animals:</b> ", length(unique(dat.sub()$id))),
+            paste("<b>Total Collars:</b> ", length(unique(dat.sub()$ctn))),
             paste("<b>Total Fixes:</b> ", nrow(dat.sub())),
             paste("<b>Min. Date:</b> ", as.Date(min(dat.sub()$fixtime))),
             paste("<b>Max. Date:</b> ", as.Date(max(dat.sub()$fixtime))),

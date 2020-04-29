@@ -37,12 +37,12 @@ color_pal <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
 collar_map <- function(gps_collar) {
   df <- gps_collar %>%
     filter(!(is.na(lon) | is.na(lat))) %>%
-    arrange(id, fixtime) %>%
-    group_by(id, lubridate::as_date(fixtime)) %>%
+    arrange(ctn, fixtime) %>%
+    group_by(ctn, lubridate::as_date(fixtime)) %>%
     slice(1) %>%  # takes the first fix of the day for each collar
     ungroup()
   
-  ids <- unique(df$id)
+  ids <- unique(df$ctn)
   pal <- rep_len(color_pal, length(ids))
 
   map <- leaflet() %>%
@@ -53,7 +53,7 @@ collar_map <- function(gps_collar) {
     
   
   for (i in seq_along(ids)) {
-    d <- df %>% filter(id == ids[i])
+    d <- df %>% filter(ctn == ids[i])
     dp <- d[c(1, nrow(d)), ]
     map <- addPolylines(map, lng = d$lon, lat = d$lat,
                         weight = 1,
@@ -65,7 +65,7 @@ collar_map <- function(gps_collar) {
                             color = pal[i],
                             fillOpacity = 1,
                             popup = paste(sep = "<br>",
-                                          paste("<b>Collar ID:<b>", ids[i]),
+                                          paste("<b>CTN:<b>", ids[i]),
                                           paste("<b>Study site:<b>", d$site),
                                           paste("<b>Last fix:<b> ", d$fixtime)))
   }
