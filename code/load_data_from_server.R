@@ -20,11 +20,11 @@ setwd("s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/code")
 
 source("s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/code/functions/batch.flat.gps.R")
 
-batch.flat.gps(iridium_csv.dir="s:/im_archive/boreal_lynx/products/iridium_csv",
-               save.file=TRUE,
-               save.dir="s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/data/derived_data/gps_collar/telonics",
-               returnx=FALSE,
-               pattern="Complete")
+batch.flat.gps(iridium_csv.dir = "s:/im_archive/boreal_lynx/products/iridium_csv",
+               save.file = TRUE,
+               save.dir = "s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/data/derived_data/gps_collar/telonics",
+               returnx = FALSE,
+               pattern = "Complete")
 setwd("C:/Users/mcobb/OneDrive - DOI/products/r_shiny_apps/collar-viewer")
 
 
@@ -34,9 +34,5 @@ fetch_remote_data(flat.gps = "s:/InvMon/biometrics/_projects/refuge/_regional_pr
               dat.collar = "s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/data/raw_data/capture/capture_data.RData",
               clean = TRUE,
               save = TRUE,
-              savedir = "./data/collar_data.RData",
+              savedir = paste0("./data/collar_data_", as.numeric(format(as.Date(Sys.Date()), '%Y%m%d')), ".RData"),
               returnit = FALSE)
-
-
-load("./data/collar_data.RData")
-
