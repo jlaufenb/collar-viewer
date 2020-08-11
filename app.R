@@ -1,7 +1,7 @@
 #' @title Collar viewer
 #' 
 #' @description  An R shiny app for visualizing and summarizing GPS collar data.
-#' @author McCrea Cobb <mccrea_cobb@fws.gov>
+#' @author McCrea Cobb \email{mccrea_cobb@@fws.gov}
 #' 
 #' @example shiny::runGitHub( "collar-viewer", "USFWS", launch.browser=T)
 

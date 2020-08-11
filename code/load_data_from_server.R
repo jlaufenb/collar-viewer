@@ -12,7 +12,8 @@
 
 #-------------------------------------------------------------------------------
 ## Update the flat.file on the server
-##    Make sure that the server drive is mapped first! (->FWS Tools to Go->Map Drives)
+## Requires PulseSecure
+## Make sure that the server drive is mapped first! (->FWS Tools to Go->Map Drives)
 
 ## Process all QFP location data
 
@@ -34,5 +35,5 @@ fetch_remote_data(flat.gps = "s:/InvMon/biometrics/_projects/refuge/_regional_pr
               dat.collar = "s:/InvMon/biometrics/_projects/refuge/_regional_projects/lynx/data/raw_data/capture/capture_data.RData",
               clean = TRUE,
               save = TRUE,
-              savedir = paste0("./data/collar_data_", as.numeric(format(as.Date(Sys.Date()), '%Y%m%d')), ".RData"),
+              savedir = paste0("C:/Users/mcobb/DOI/Northwest Boreal Lynx Project - data/derived/shiny_app/collar_data_", as.numeric(format(as.Date(Sys.Date()), '%Y%m%d')), ".RData"),
               returnit = FALSE)
