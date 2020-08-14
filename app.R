@@ -106,7 +106,7 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                                                            choices = c('Display Points', "Minimum Convex Polygon", "Kernel Density", "Brownian Bridge"),
                                                            selected = 'Display Points'),
                                             textInput('tx_Contour', 'Contour Percentages:', placeholder = '50, 95', value = '50, 95'),
-                                            actionButton("ac_UpdateMap", "Update Map"),
+                                            actionButton("ac_UpdateMap", "Update Map")
                               )
                           )
                  )
