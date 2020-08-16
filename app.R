@@ -1,18 +1,20 @@
 #' @title Collar viewer
 #' 
 #' @description  An R shiny app for visualizing and summarizing GPS collar data.
-#' @author McCrea Cobb <mccrea_cobb@fws.gov>
+#' @author McCrea Cobb \email{mccrea_cobb@@fws.gov}
 #' 
 #' @example shiny::runGitHub( "collar-viewer", "USFWS", launch.browser=T)
 
 
+# Install the required packages if they aren't already installed
 packages <- c("shiny", "shinyjs", "tidyverse", "leaflet", "shinyWidgets", "DT", "sp", 
               "rgdal","adehabitatLT", "adehabitatHR", "lubridate", "geojsonio",
-              "maptools")
+              "maptools", "dplyr")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 
+# Load the required packages
 library(shiny)
 library(shinyjs)
 library(tidyverse)
@@ -28,7 +30,7 @@ library(geojsonio)
 library(maptools)
 library(dplyr)
 
-# Source files:
+# Source custom functions
 source("code/functions/global.R")
 
 # Define UI for application that draws a histogram
@@ -41,7 +43,7 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                             fileInput(inputId = "file", 
                                       label = "Select collar data:",
                                       multiple = FALSE,
-                                      accept = ".RData")), # used to get the file upload control option
+                                      accept = ".RData")), # Get the file upload control option
                           
                           DT::DTOutput("sum.tbl")
                  ),
@@ -50,9 +52,9 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                  tabPanel("Interactive map",
                           div(class = "outer",
                               
-                              tags$head(includeCSS("css/style.css")),
+                              tags$head(includeCSS("css/style.css")),  # Add custom css style
                               
-                              leafletOutput("map", width="100%", height="100%"),
+                              leafletOutput("map", width="100%", height="100%"),  # Add the leaflet map
                               
                               absolutePanel(id = "controls", 
                                             class = "panel panel-default", 
@@ -65,9 +67,9 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                                             width = "20%", 
                                             height = "auto",
                                             
-                                            htmlOutput("dataInfo"),  # Adds info about the # of fixes, first/last fix, etc
+                                            htmlOutput("dataInfo"),  # Add a header of summaries of # of fixes, first/last fix, etc.
                                             
-                                            selectizeGroupUI(
+                                            shinyWidgets::selectizeGroupUI(  # Add the data filters
                                               id = "my-filters",
                                               inline = FALSE,
                                               params = list(
@@ -87,7 +89,7 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                               
                               tags$head(includeCSS("css/style.css")),
                               
-                              leafletOutput("map_hrs", width = "100%", height = "100%"),
+                              leafletOutput("map_hrs", width = "100%", height = "100%"),  # Add the map
                               
                               absolutePanel(id = "controls",
                                             class = "panel panel-default", 
@@ -102,7 +104,7 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
                                             
                                             HTML("<br>"),
                                             
-                                            selectizeInput("sl_HomeRange", "Make a selection:",
+                                            selectizeInput("sl_HomeRange", "Make a selection:",  # Add the inputs to select a home range method
                                                            choices = c('Display Points', "Minimum Convex Polygon", "Kernel Density", "Brownian Bridge"),
                                                            selected = 'Display Points'),
                                             textInput('tx_Contour', 'Contour Percentages:', placeholder = '50, 95', value = '50, 95'),
@@ -115,15 +117,13 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
 
 #-------------------------------------------------------------------------------
 
-
-
 # Define server logic 
 server <- function(input, output, session) {
   
   #----
   ## Tab 1: Load data
   
-  # Define the uploaded Rdata file
+  # Define the uploaded .Rdata file
   dat <- reactive({
     req(input$file)
     if (is.null(input$file)) 
@@ -134,19 +134,19 @@ server <- function(input, output, session) {
     e = new.env()
     name <- load(file, envir = e)
     dat <- e[[name]]
-    dat <- dat %>%
-      filter(!is.na(lat))
+    dat <- dat %>%  
+      filter(!is.na(lat))  # Filter out rows that are missing latitude values
     dat
   })
   
-  # Subset data for summary table:
+  # Summarize data for the summary table
   dat.tbl <- reactive({
     req(input$file)
     dat() %>% 
       group_by("CTN" = ctn, 
                "Study site" = site,
                "Age class" = age,
-               "Sex" = sex) %>%  # Creates a summary table of the data
+               "Sex" = sex) %>% 
       summarise(
         "Capture date" = as.Date(first(capture_date)),
         "Fix schedule" = last(fixsched),
@@ -155,21 +155,18 @@ server <- function(input, output, session) {
         "Last fix" = max(as.Date(fixtime)))
   })
   
-  # Displays a summary table of the data:
+  # Create a DT table of the summarized data
   output$sum.tbl <- DT::renderDT(dat.tbl(), options = list(pageLength = 20))
-  
-  # dat.map <- dat %>%
-  #   select(c(id, fixtime, lat, lon, sex, age, )
   
   
   #----
   ## Tab 2: Map
   
-  # Subset the data based on user input:
+  # Subset the data based on user input from selectizeGroupUI:
   dat.sub <- callModule(
-    module = selectizeGroupServer,
     id = "my-filters",
-    data = dat,
+    module = selectizeGroupServer,
+    data = dat,  
     vars = c("site", "sex", "age", "ctn")
   )
   
@@ -178,7 +175,7 @@ server <- function(input, output, session) {
     collar_map(dat.sub())
   })
   
-  # Output info for animals selected in map
+  # Output info for fixes selected in the map
   output$dataInfo <- renderUI({
     HTML(
       paste(sep = "<br/>",
@@ -195,18 +192,18 @@ server <- function(input, output, session) {
   ## Tab 3: Home Ranges
   
   dat.move <- eventReactive(input$ac_UpdateMap, {
-    ## Creates a dataframe of movement parameters for analysis
+    ## Create a dataframe of movement parameters for analysis
     
-    df <- xy_conv(dat.sub())  # Adds projected x and y coordinates to the df used for distance and speed calculations 
+    df <- xy_conv(dat.sub())  # Add projected x and y coordinates to the df used for distance and speed calculations 
     
     move <- df %>%
       arrange(fixtime) %>%
       group_by(id) %>%
-      mutate(Distance = move_dist(x, y),  # sourced from global.R
+      mutate(Distance = move_dist(x, y),  # Sourced from global.R
              sigDist = cumsum(Distance),
-             NSD = move_nsd(x, y), # sourced from global.R
-             dTime = move_dt(fixtime),  # sourced from global.R
-             Speed = move_speed(Distance, dTime),  # sourced from global.R
+             NSD = move_nsd(x, y), # Sourced from global.R
+             dTime = move_dt(fixtime),  # Sourced from global.R
+             Speed = move_speed(Distance, dTime),  # Sourced from global.R
              Year = lubridate::year(fixtime),
              Month = lubridate::month(fixtime),
              Day = lubridate::day(fixtime),
@@ -215,7 +212,7 @@ server <- function(input, output, session) {
     return(move)
   })
   
-  ## Create a comma seperated list of values for the home range contours based on user input
+  ## Create a comma separated list of values for the home range contours based on user input
   pct_contour <- reactive({
     return(as.numeric(strsplit(input$tx_Contour, ', ')[[1]]))
   })
@@ -223,8 +220,7 @@ server <- function(input, output, session) {
   ## Home range estimation
   hr_ud <- eventReactive(input$ac_UpdateMap, {
     df <- as.data.frame(dat.move())
-    if (input$sl_HomeRange == 'Minimum Convex Polygon') {
-      # If user selects Minimum Convex Polygon home range
+    if (input$sl_HomeRange == 'Minimum Convex Polygon') {  # If user selects Minimum Convex Polygon home range
       
       spdf <- sp::SpatialPointsDataFrame(coordinates(cbind(df$x, df$y)),
                                          data = df, proj4string = CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"))
@@ -239,20 +235,18 @@ server <- function(input, output, session) {
       }
       names(hr) <- ids
       
-    } else if (input$sl_HomeRange == 'Kernel Density') {
-      # If user selects Kernel home range
-      
+    } else if (input$sl_HomeRange == 'Kernel Density') {  # If user selects Kernel home range
+
       kd <- sp::SpatialPointsDataFrame(coordinates(cbind(df$lon, df$lat)), data = df,
                                        proj4string = CRS('+proj=longlat'))
       kd <- adehabitatHR::kernelUD(kd[, "id"])
       hr <- lapply(kd, function(x) get_contours(x, pct_contour()))  # get_contours() sourced from global.R
       
-    } else if (input$sl_HomeRange == 'Brownian Bridge') {
-      # If user selects Brownian Bridge home range
+    } else if (input$sl_HomeRange == 'Brownian Bridge') {  # If user selects Brownian Bridge home range
       
-      bb <- to_ltraj(df)  # sourced from global.R
-      bb <- estimate_bbmm(bb)  # sourced from global.R
-      #bb <- bb_fix(bb)  # sourced from global.R
+      bb <- to_ltraj(df)  # Sourced from global.R
+      bb <- estimate_bbmm(bb)  # Sourced from global.R
+      #bb <- bb_fix(bb)  # Sourced from global.R, not needed, but kept just in case
       hr <- lapply(bb, function(x) get_contours(x, pct_contour()))  # get_contours() sourced from global.R
       for (i in seq_along(bb)) {
         hr[[i]]@proj4string <- sp::CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
@@ -264,8 +258,7 @@ server <- function(input, output, session) {
   })
   
   
-  lfMap <- eventReactive(input$ac_UpdateMap, {
-    # Create map of home ranges
+  lfMap <- eventReactive(input$ac_UpdateMap, {  # Create map of home ranges
     
     hr <- hr_ud()
     if (input$sl_HomeRange == 'Brownian Bridge' | input$sl_HomeRange == 'Kernel Density') {
@@ -303,7 +296,6 @@ server <- function(input, output, session) {
   })
   
 }
-
 
 
 # Run the application 
