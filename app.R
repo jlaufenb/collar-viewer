@@ -163,7 +163,7 @@ server <- function(input, output, session) {
   ## Tab 2: Map
   
   # Subset the data based on user input from selectizeGroupUI:
-  dat.sub <- moduleServer(  # Used to be callModule
+  dat.sub <- callModule(
     id = "my-filters",
     module = selectizeGroupServer,
     data = dat,  
