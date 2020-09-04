@@ -34,7 +34,7 @@ library(dplyr)
 source("code/functions/global.R")
 
 # Define UI for application that draws a histogram
-ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
+ui <- navbarPage("CollarViewer v.0.2.1", id="nav",
                  
                  # Tab 1: Load data
                  tabPanel("Load data",
@@ -119,6 +119,8 @@ ui <- navbarPage("CollarViewer v.0.2.0", id="nav",
 
 # Define server logic 
 server <- function(input, output, session) {
+  
+  options(shiny.maxRequestSize=30*1024^2)
   
   #----
   ## Tab 1: Load data
