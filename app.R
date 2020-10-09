@@ -44,8 +44,6 @@ ui <- navbarPage("CollarViewer v.0.1.0-alpha", id="nav",
                                       label = "Select collar data:",
                                       multiple = FALSE,
                                       accept = ".RData")), # Get the file upload control option
-                          
-                          DT::DTOutput("sum.tbl")
                  ),
                  
                  # Tab 2: Collar summary table
