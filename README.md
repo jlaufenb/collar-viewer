@@ -14,4 +14,4 @@ An R shiny app for visualizing and summarizing GPS collar data. Users upload a R
 
 ## Instructions
 `if (!require("shiny")) install.packages("shiny")`  
-`shiny::runGitHub( "collar-viewer", "jlaufenb", launch.browser=T)`
+`shiny::runGitHub( "collar-viewer", "jlaufenb", ref = "dev", launch.browser=T)`
