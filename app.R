@@ -46,9 +46,14 @@ ui <- navbarPage("CollarViewer v.0.1.0-alpha", id="nav",
                                       accept = ".RData")), # Get the file upload control option
                  ),
                  
-                 # Tab 2: Collar summary table
-                 tabPanel("Collar table",
-                          DT::DTOutput("sum.tbl")
+                 # Tab 2: Summary tables
+                 navbarMenu("Summary tables",
+                          tabPanel("Collars",
+                                   DT::DTOutput("sum.tbl")
+                          ),
+                          tabPanel("Animals",
+                                   DT::DTOutput("sum.tbl")
+                          )
                  ),
 
                  # Tab 3: Interactive map
