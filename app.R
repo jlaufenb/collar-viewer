@@ -48,7 +48,12 @@ ui <- navbarPage("CollarViewer v.0.1.0-alpha", id="nav",
                           DT::DTOutput("sum.tbl")
                  ),
                  
-                 # Tab 2: Interactive map
+                 # Tab 2: Collar summary table
+                 tabPanel("Collar table",
+                          DT::DTOutput("sum.tbl")
+                 ),
+
+                 # Tab 3: Interactive map
                  tabPanel("Interactive map",
                           div(class = "outer",
                               
@@ -83,7 +88,7 @@ ui <- navbarPage("CollarViewer v.0.1.0-alpha", id="nav",
                           )
                  ),
                  
-                 # Tab 3: Home Ranges
+                 # Tab 4: Home Ranges
                  tabPanel("Home Ranges",
                           div(class = "outer",
                               
