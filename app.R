@@ -11,7 +11,7 @@ packages <- c("shiny", "shinyjs", "tidyverse", "leaflet", "shinyWidgets", "DT", 
               "rgdal","adehabitatLT", "adehabitatHR", "lubridate", "geojsonio",
               "maptools", "dplyr")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
-  install.packages(setdiff(packages, rownames(installed.packages())))  
+    install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 
 # Load the required packages
@@ -40,85 +40,21 @@ ui <- navbarPage("CollarViewer v.0.1.0-alpha", id="nav",
                  tabPanel("Load data",
                           # Sidebar layout
                           fluidPage(
-                            fileInput(inputId = "file", 
-                                      label = "Select collar data:",
-                                      multiple = FALSE,
-                                      accept = ".RData")), # Get the file upload control option
+                              fileInput(inputId = "file", 
+                                        label = "Select collar data:",
+                                        multiple = FALSE,
+                                        accept = ".RData")), # Get the file upload control option
+                          htmlOutput("load_msg")
                  ),
                  
                  # Tab 2: Summary tables
                  navbarMenu("Summary tables",
-                          tabPanel("Collars",
-                                   DT::DTOutput("sum.tbl")
-                          ),
-                          tabPanel("Animals",
-                                   DT::DTOutput("sum.tbl")
-                          )
-                 ),
-
-                 # Tab 3: Interactive map
-                 tabPanel("Interactive map",
-                          div(class = "outer",
-                              
-                              tags$head(includeCSS("css/style.css")),  # Add custom css style
-                              
-                              leafletOutput("map", width="100%", height="100%"),  # Add the leaflet map
-                              
-                              absolutePanel(id = "controls", 
-                                            class = "panel panel-default", 
-                                            fixed = TRUE,
-                                            draggable = TRUE, 
-                                            top = 60, 
-                                            left = 20, 
-                                            right = "auto", 
-                                            bottom = "auto",
-                                            width = "20%", 
-                                            height = "auto",
-                                            
-                                            htmlOutput("dataInfo"),  # Add a header of summaries of # of fixes, first/last fix, etc.
-                                            
-                                            shinyWidgets::selectizeGroupUI(  # Add the data filters
-                                              id = "my-filters",
-                                              inline = FALSE,
-                                              params = list(
-                                                site = list(inputId = "site", title = "Site:", placeholder = 'select'),
-                                                sex = list(inputId = "sex", title = "Sex:", placeholder = 'select'),
-                                                age = list(inputId = "age", title = "Age class:", placeholder = 'select'),
-                                                id = list(inputId = "ctn", title = "CTN:", placeholder = 'select')
-                                              )
-                                            )
-                              )
-                          )
-                 ),
-                 
-                 # Tab 4: Home Ranges
-                 tabPanel("Home Ranges",
-                          div(class = "outer",
-                              
-                              tags$head(includeCSS("css/style.css")),
-                              
-                              leafletOutput("map_hrs", width = "100%", height = "100%"),  # Add the map
-                              
-                              absolutePanel(id = "controls",
-                                            class = "panel panel-default", 
-                                            fixed = TRUE,
-                                            draggable = TRUE, 
-                                            top = 60, 
-                                            left = 20, 
-                                            right = "auto", 
-                                            bottom = "auto",
-                                            width = "20%", 
-                                            height = "auto",
-                                            
-                                            HTML("<br>"),
-                                            
-                                            selectizeInput("sl_HomeRange", "Make a selection:",  # Add the inputs to select a home range method
-                                                           choices = c('Display Points', "Minimum Convex Polygon", "Kernel Density", "Brownian Bridge"),
-                                                           selected = 'Display Points'),
-                                            textInput('tx_Contour', 'Contour Percentages:', placeholder = '50, 95', value = '50, 95'),
-                                            actionButton("ac_UpdateMap", "Update Map")
-                              )
-                          )
+                            tabPanel("Collars",
+                                     DT::DTOutput("collar.tbl")
+                            ),
+                            tabPanel("Animals",
+                                     DT::DTOutput("animal.tbl")
+                            )
                  )
 )
 
@@ -127,184 +63,113 @@ ui <- navbarPage("CollarViewer v.0.1.0-alpha", id="nav",
 
 # Define server logic 
 server <- function(input, output, session) {
-  
-  options(shiny.maxRequestSize=30*1024^2)
-  
-  #----
-  ## Tab 1: Load data
-  
-  # Define the uploaded .Rdata file
-  dat <- reactive({
-    req(input$file)
-    if (is.null(input$file)) 
-      return(NULL)
-    inFile <- input$file
-    file <- inFile$datapath
-    # Load the file into new environment and get it from there
-    e = new.env()
-    name <- load(file, envir = e)
-    dat <- e[[name]]
-    dat <- dat %>%  
-      filter(!is.na(lat))  # Filter out rows that are missing latitude values
-    dat
-  })
-  
-  # Summarize data for the summary table
-  dat.tbl <- reactive({
-    req(input$file)
-    dat() %>% 
-      group_by("CTN" = ctn, 
-               "Study site" = site,
-               "Age class" = age,
-               "Sex" = sex) %>% 
-      summarise(
-        "Capture date" = as.Date(first(capture_date)),
-        "Fix schedule" = last(fixsched),
-        "Current fix rate" = last(fixrate),
-        "First fix" = min(as.Date(fixtime)),
-        "Last fix" = max(as.Date(fixtime)))
-  })
-  
-  # Create a DT table of the summarized data
-  output$sum.tbl <- DT::renderDT(dat.tbl(), options = list(pageLength = 20))
-  
-  
-  #----
-  ## Tab 2: Map
-  
-  # Subset the data based on user input from selectizeGroupUI:
-  dat.sub <- callModule(
-    id = "my-filters",
-    module = selectizeGroupServer,
-    data = dat,  
-    vars = c("site", "sex", "age", "ctn")
-  )
-  
-  # Create a map of the subsetted data:
-  output$map <- renderLeaflet({
-    collar_map(dat.sub())
-  })
-  
-  # Output info for fixes selected in the map
-  output$dataInfo <- renderUI({
-    HTML(
-      paste(sep = "<br/>",
-            paste("<br>"),
-            paste("<b>Total Collars:</b> ", length(unique(dat.sub()$ctn))),
-            paste("<b>Total Fixes:</b> ", nrow(dat.sub())),
-            paste("<b>Min. Date:</b> ", as.Date(min(dat.sub()$fixtime))),
-            paste("<b>Max. Date:</b> ", as.Date(max(dat.sub()$fixtime))),
-            paste("<br>")
-      ))
-  })
-  
-  #----
-  ## Tab 3: Home Ranges
-  
-  dat.move <- eventReactive(input$ac_UpdateMap, {
-    ## Create a dataframe of movement parameters for analysis
     
-    df <- xy_conv(dat.sub())  # Add projected x and y coordinates to the df used for distance and speed calculations 
+    options(shiny.maxRequestSize=30*1024^2)
     
-    move <- df %>%
-      arrange(fixtime) %>%
-      group_by(id) %>%
-      mutate(Distance = move_dist(x, y),  # Sourced from global.R
-             sigDist = cumsum(Distance),
-             NSD = move_nsd(x, y), # Sourced from global.R
-             dTime = move_dt(fixtime),  # Sourced from global.R
-             Speed = move_speed(Distance, dTime),  # Sourced from global.R
-             Year = lubridate::year(fixtime),
-             Month = lubridate::month(fixtime),
-             Day = lubridate::day(fixtime),
-             Hour = lubridate::hour(fixtime)) %>%
-      ungroup()
-    return(move)
-  })
-  
-  ## Create a comma separated list of values for the home range contours based on user input
-  pct_contour <- reactive({
-    return(as.numeric(strsplit(input$tx_Contour, ', ')[[1]]))
-  })
-  
-  ## Home range estimation
-  hr_ud <- eventReactive(input$ac_UpdateMap, {
-    df <- as.data.frame(dat.move())
-    if (input$sl_HomeRange == 'Minimum Convex Polygon') {  # If user selects Minimum Convex Polygon home range
-      
-      spdf <- sp::SpatialPointsDataFrame(coordinates(cbind(df$x, df$y)),
-                                         data = df, proj4string = CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"))
-      cp <- adehabitatHR::mcp(spdf[,"id"], percent = 99)
-      cp <- sp::spTransform(cp, CRS('+proj=longlat'))
-      ids <- cp$id
-      hr <- vector("list", length(cp$id))
-      for (i in seq_along(ids)) {
-        poly <- cp[cp$id == ids[i], ]
-        poly <- geojson_json(poly)
-        hr[[i]] <- poly
-      }
-      names(hr) <- ids
-      
-    } else if (input$sl_HomeRange == 'Kernel Density') {  # If user selects Kernel home range
+    #----
+    ## Tab 1: Load data
+    
+    # Define the uploaded .Rdata file
+    dat <- reactive({
+        req(input$file)
+        if (is.null(input$file)) 
+            return(NULL)
+        inFile <- input$file
+        file <- inFile$datapath
+        # Load the file into new environment and get it from there
+        e = new.env()
+        name <- load(file, envir = e)
+        dat <- e[[name]]
+        dat$locations <- dat$locations %>%  
+            filter(!is.na(lat))  # Filter out rows that are missing latitude values
+        dat
+    })
 
-      kd <- sp::SpatialPointsDataFrame(coordinates(cbind(df$lon, df$lat)), data = df,
-                                       proj4string = CRS('+proj=longlat'))
-      kd <- adehabitatHR::kernelUD(kd[, "id"])
-      hr <- lapply(kd, function(x) get_contours(x, pct_contour()))  # get_contours() sourced from global.R
-      
-    } else if (input$sl_HomeRange == 'Brownian Bridge') {  # If user selects Brownian Bridge home range
-      
-      bb <- to_ltraj(df)  # Sourced from global.R
-      bb <- estimate_bbmm(bb)  # Sourced from global.R
-      #bb <- bb_fix(bb)  # Sourced from global.R, not needed, but kept just in case
-      hr <- lapply(bb, function(x) get_contours(x, pct_contour()))  # get_contours() sourced from global.R
-      for (i in seq_along(bb)) {
-        hr[[i]]@proj4string <- sp::CRS("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
-        hr[[i]] <- sp::spTransform(hr[[i]], CRS('+proj=longlat'))
-      }
-    }
+    cvdat <- reactive({
+        req(input$file)
+        dat = dat()
+        if(!is.null(dat$collars))
+            if(!is.null(dat$animals)){
+                aids = dat$animals$animal_id
+                dat$collars = dat$collars[dat$collars$animal_id %in% aids,]
+            }
+        dat$locations = dat$locations[dat$locations$collar_id %in% dat$collars$collar_id,]
+        cvdat = dat
+        cvdat
+    })
+
+    load_msg <- reactive({
+        req(input$file)
+        dat = dat()
+        cvdat = cvdat()
+        if(is.null(cvdat$locations)){
+            msg = "No location data uploaded"
+        }else{
+            if(is.null(cvdat$collars)){
+                if(!is.null(cvdat$animals)){
+                    msg = "Must provide collar data if providing animal data"
+                }else{
+                    msg = "Only location data was uploaded"
+                }
+            }else{
+                if(!is.null(cvdat$animals)){
+                    aids = cvdat$animals$animal_id
+                    collars2rm_a = cvdat$collars$collar_id[!cvdat$collars$animal_id %in% aids]
+                    if(length(collars2rm_a)==0){
+                        msg_a = "All collar IDs occurring in collar input data also occur in animal data."
+                    }else{
+                        msg_a = paste(paste0("Of ", nrow(cvdat$collars), " collar IDs occurring in the collar input data,"),
+                                       paste0(length(collars2rm_a), " collar IDs did not occur in the"),
+                                       "animal input data and were thus removed", sep = "\n")
+                    }
+                }
+                lcids = unique(cvdat$locations$collar_id)
+                collars2rm_b = lcids[!lcids %in% cvdat$collars$collar_id & !lcids %in% collars2rm_a]
+                if(length(collars2rm_b)==0){
+                    msg_b = "All collar IDs occurring in collar input data also occur in animal data."
+                }else{
+                    msg_b = paste(paste0("Of ", length(lcids), " collar IDs occurring in the location input data,"),
+                                  paste(length(collars2rm_b), " collar IDs did not occur in the"),
+                                  "collar input data and were thus removed", sep = "\n")
+                }
+                msg = c(msg_a, msg_b)
+            }
+        }
+        msg
+    })
     
-    return(hr)
-  })
-  
-  
-  lfMap <- eventReactive(input$ac_UpdateMap, {  # Create map of home ranges
     
-    hr <- hr_ud()
-    if (input$sl_HomeRange == 'Brownian Bridge' | input$sl_HomeRange == 'Kernel Density') {
-      hr <- lapply(hr, function(x) geojson_json(x))
-    }
+    output$load_msg <- renderText({load_msg()})
     
-    lflt <- leaflet() %>% addProviderTiles('Esri.WorldTopoMap',
-                                           options = providerTileOptions(attribution = NA)) %>%
-      addMeasure(primaryLengthUnit="kilometers", secondaryLengthUnit="kilometers")
+    #----
+    ## Tab 2: Summarize data
     
-    if (input$sl_HomeRange == 'Display Points') {
-      lflt <- lflt %>% 
-        map_pts(dat.move())
-    } else {
-      shinyjs::logjs(paste(sep = ' - ', 'homerange', input$sl_HomeRange, dput(hr)))
-      lflt <- lflt %>% 
-        map_polygons(hr) %>% 
-        map_pts(dat.move())
-    }
-  })
-  
-  # Map Output
-  output$map_hrs <- renderLeaflet({
-    shinyjs::logjs(paste(dput(lfMap())))
-    lfMap()
-  })
-  
-  # Hide Polygon output if MCP is selected
-  observeEvent(input$sl_HomeRange, {
-    if (input$sl_HomeRange == 'Brownian Bridge' | input$sl_HomeRange == 'Kernel Density') {
-      shinyjs::show('dl_Shape')
-    } else {
-      shinyjs::hide('dl_Shape')
-    }
-  })
-  
+    
+
+    # Summarize data for the collar summary table
+    collar.tbl <- reactive({
+        req(input$file)
+        x = dat()
+        tbl = x$collars
+        tbl
+    })
+    
+    # Create a DT table of the summarized collar data
+    output$collar.tbl <- DT::renderDT(collar.tbl(), options = list(pageLength = 20))
+    
+
+    # Summarize data for the animal summary table
+    animal.tbl <- reactive({
+        req(input$file)
+        x = dat()
+        tbl = x$animals
+        tbl
+    })
+    
+    # Create a DT table of the summarized animal data
+    output$animal.tbl <- DT::renderDT(animal.tbl(), options = list(pageLength = 20))
+    
+    
 }
 
 
